@@ -80,17 +80,16 @@ object SbtAspectj extends Plugin {
     aspectProducts <<= compileIfEnabled,
     products in Compile <<= combineProducts,
     weaveAgentJar <<= javaAgent,
-    weaveAgentOptions <<= javaAgentOptions
-  )
+    weaveAgentOptions <<= javaAgentOptions)
 
   def dependencySettings = Seq(
     ivyConfigurations += Aspectj,
-    libraryDependencies <++= (aspectjVersion in Aspectj) { version => Seq(
-      "org.aspectj" % "aspectjtools" % version % Aspectj.name,
-      "org.aspectj" % "aspectjweaver" % version % Aspectj.name,
-      "org.aspectj" % "aspectjrt" % version
-    )}
-  )
+    libraryDependencies <++= (aspectjVersion in Aspectj) { version =>
+      Seq(
+        "org.aspectj" % "aspectjtools" % version % Aspectj.name,
+        "org.aspectj" % "aspectjweaver" % version % Aspectj.name,
+        "org.aspectj" % "aspectjrt" % version)
+    })
 
   def compileClasses = (compile in Compile, compileInputs in Compile) map {
     (_, inputs) => inputs.config.classesDirectory
@@ -101,11 +100,10 @@ object SbtAspectj extends Plugin {
   }
 
   def ajcBaseOptions = (showWeaveInfo, verbose, sourceLevel) map {
-    (info, verbose, level) => {
+    (info, verbose, level) =>
       (if (info) Seq("-showWeaveInfo") else Seq.empty[String]) ++
-      (if (verbose) Seq("-verbose") else Seq.empty[String]) ++
-      Seq(level)
-    }
+        (if (verbose) Seq("-verbose") else Seq.empty[String]) ++
+        Seq(level)
   }
 
   def collectAspectSources = (sourceDirectories, includeFilter, excludeFilter) map {
@@ -117,9 +115,8 @@ object SbtAspectj extends Plugin {
   }
 
   def mapAspects = (inputs, aspects, aspectFilter, outputDirectory) map {
-    (in, aspects, filter, dir) => {
+    (in, aspects, filter, dir) =>
       in map { input => Mapping(input, filter(input, aspects), instrumented(input, dir)) }
-    }
   }
 
   def instrumented(input: File, outputDir: File): File = {
@@ -131,61 +128,64 @@ object SbtAspectj extends Plugin {
     outputDir / outputName
   }
 
-  def ajcTask = (cacheDirectory, aspectMappings, baseOptions, aspectjClasspath, streams) map {
-    (cache, mappings, baseOpts, cp, s) => {
+  def ajcTask = (cacheDirectory, aspectMappings, baseOptions, aspectjClasspath, name, streams) map {
+    (cache, mappings, baseOpts, cp, name, s) =>
+      s.log.info(name + ": Weaving aspects")
       val cacheDir = cache / "aspectj"
       val cached = FileFunction.cached(cacheDir / "ajc-inputs", FilesInfo.hash) { _ =>
         val withPrevious = mappings.zipWithIndex map { case (m, i) => (mappings.take(i), m) }
-        (withPrevious map { case (previousMappings, mapping) =>
-          val classpath = insertInstrumentedJars(cp, previousMappings)
-          val classpathOpts = Seq("-classpath", classpath.files.absString)
-          val options = baseOpts ++ classpathOpts
-          runAjc(mapping.in, mapping.aspects, mapping.out, options, cacheDir, s.log)
-          mapping.out
+        (withPrevious map {
+          case (previousMappings, mapping) =>
+            val classpath = insertInstrumentedJars(cp, previousMappings)
+            val classpathOpts = Seq("-classpath", classpath.files.absString)
+            val options = baseOpts ++ classpathOpts
+            runAjc(mapping.in, mapping.aspects, mapping.out, options, cacheDir, name, s.log)
+            mapping.out
         }).toSet
       }
-      val cacheInputs = mappings.flatMap( mapping => {
+      val cacheInputs = mappings.flatMap(mapping => {
         val input = mapping.in
         val aspects = mapping.aspects.map(_.file)
         if (input.isDirectory) (input ** "*.class").get ++ aspects
         else input +: aspects
-       }).toSet
+      }).toSet
       cached(cacheInputs).toSeq
-    }
   }
 
-  def runAjc(input: File, aspects: Seq[Aspect], output: File, baseOptions: Seq[String], cacheDir: File, log: Logger): Unit = {
+  def runAjc(input: File, aspects: Seq[Aspect], output: File, baseOptions: Seq[String], cacheDir: File, name: String, log: Logger): Unit = {
     IO.createDirectory(output.getParentFile)
     if (aspects.isEmpty) {
-      log.info("No aspects for %s" format input)
+      log.info(name + ": No aspects for %s" format input)
       if (input.isDirectory) {
-        log.info("Copying classes to %s" format output)
+        log.info(name + ": Copying classes to %s" format output)
         val classes = (input ** "*.class") x rebase(input, output)
         Sync(cacheDir / "ajc-sync")(classes)
-      } else {
-        log.info("Copying jar to %s" format output)
+      } else if (input.exists && output.exists) {
+        log.info(name + ": Copying jar to %s" format output)
         IO.copyFile(input, output, false)
+      } else {
+        log.info(name + ": Skip %s" format input)
       }
     } else {
-      log.info("Weaving %s with aspects:" format input)
+      log.info(name + ": Weaving %s with aspects:" format input)
       aspects foreach { a => log.info("  " + a.file.absolutePath) }
-      log.info("to %s" format output)
+      log.info(name + ": to %s" format output)
       val options = ajcOptions(input, aspects, output, baseOptions).toArray
-      ajcRunMain(options, log)
+      ajcRunMain(options, name, log)
     }
   }
 
   def ajcOptions(in: File, aspects: Seq[Aspect], out: File, baseOptions: Seq[String]): Seq[String] = {
     val (binaries, sources) = aspects partition (_.binary)
     baseOptions ++
-    Seq("-inpath", in.absolutePath) ++
-    { if (binaries.nonEmpty) Seq("-aspectpath", binaries.map(_.file).absString) else Seq.empty } ++
-    { if (in.isDirectory) Seq("-d", out.absolutePath) else Seq("-outjar", out.absolutePath) } ++
-    sources.map(_.file.absolutePath)
+      Seq("-inpath", in.absolutePath) ++
+      { if (binaries.nonEmpty) Seq("-aspectpath", binaries.map(_.file).absString) else Seq.empty } ++
+      { if (in.isDirectory) Seq("-d", out.absolutePath) else Seq("-outjar", out.absolutePath) } ++
+      sources.map(_.file.absolutePath)
   }
 
   def copyResourcesTask = (cacheDirectory, aspectMappings, copyResources in Compile) map {
-    (cache, mappings, resourceMappings) => {
+    (cache, mappings, resourceMappings) =>
       val cacheFile = cache / "aspectj" / "resource-sync"
       val mapped = mappings flatMap { mapping =>
         if (mapping.in.isDirectory) {
@@ -194,12 +194,11 @@ object SbtAspectj extends Plugin {
       }
       Sync(cacheFile)(mapped)
       mapped
-    }
   }
 
-  def ajcRunMain(options: Array[String], log: Logger): Unit = {
-    log.debug("Running AspectJ compiler with:")
-    log.debug("ajc " + options.mkString(" "))
+  def ajcRunMain(options: Array[String], name: String, log: Logger): Unit = {
+    log.debug(name + ": Running AspectJ compiler with:")
+    log.debug(name + ": ajc " + options.mkString(" "))
     val ajc = new Main
     val handler = new MessageHandler
     val showWeaveInfo = options contains "-showWeaveInfo"
@@ -209,12 +208,13 @@ object SbtAspectj extends Plugin {
       def handleMessage(message: IMessage): Boolean = {
         import IMessage._
         message.getKind match {
-          case WEAVEINFO       => if (showWeaveInfo) log.info(message.toString)
-          case INFO            => if (verbose) log.info(message.toString)
-          case DEBUG | TASKTAG => log.debug(message.toString)
-          case WARNING         => log.warn(message.toString)
-          case ERROR           => log.error(message.toString); errors = true
-          case FAIL | ABORT    => throw new AbortException(message)
+          case WEAVEINFO => if (showWeaveInfo) log.info(name + ": " + message.toString)
+          case INFO => if (verbose) log.info(name + ": " + message.toString)
+          case DEBUG | TASKTAG => log.debug(name + ": " + message.toString)
+          case WARNING => log.warn(name + ": " + message.toString)
+          case ERROR =>
+            log.error(name + ": " + message.toString); errors = true
+          case FAIL | ABORT => throw new AbortException(name + ": " + message)
         }
         true
       }
@@ -241,28 +241,27 @@ object SbtAspectj extends Plugin {
     classpath map { a => mappings.find(_.in == a.data).map(_.out).map(Attributed.blank).getOrElse(a) }
   }
 
-  def compileAspectsTask = (sources, outxml, aspectjClasspath, baseOptions, aspectClassesDirectory, cacheDirectory, streams) map {
-    (aspects, outxml, classpath, opts, dir, cacheDir, s) => {
+  def compileAspectsTask = (sources, outxml, aspectjClasspath, baseOptions, aspectClassesDirectory, cacheDirectory, name, streams) map {
+    (aspects, outxml, classpath, opts, dir, cacheDir, name, s) =>
       val cachedCompile = FileFunction.cached(cacheDir / "ajc-compile", FilesInfo.hash) { _ =>
         val sourceCount = Util.counted("AspectJ source", "", "s", aspects.length)
         sourceCount foreach { count => s.log.info("Compiling %s to %s..." format (count, dir)) }
         val options = ajcCompileOptions(aspects, outxml, classpath, opts, dir).toArray
-        ajcRunMain(options, s.log)
+        ajcRunMain(options, name, s.log)
         dir.***.get.toSet
       }
       val inputs = aspects.toSet
       cachedCompile(inputs)
       dir
-    }
   }
 
   def ajcCompileOptions(aspects: Seq[File], outxml: Boolean, classpath: Classpath, baseOptions: Seq[String], output: File): Seq[String] = {
     baseOptions ++
-    Seq("-XterminateAfterCompilation") ++
-    Seq("-classpath", classpath.files.absString) ++
-    Seq("-d", output.absolutePath) ++
-    (if (outxml) Seq("-outxml") else Seq.empty[String]) ++
-    aspects.map(_.absolutePath)
+      Seq("-XterminateAfterCompilation") ++
+      Seq("-classpath", classpath.files.absString) ++
+      Seq("-d", output.absolutePath) ++
+      (if (outxml) Seq("-outxml") else Seq.empty[String]) ++
+      aspects.map(_.absolutePath)
   }
 
   def compileIfEnabled = (enableProducts, compileAspects.task) flatMap {
