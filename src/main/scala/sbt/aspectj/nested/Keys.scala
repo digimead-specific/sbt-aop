@@ -24,8 +24,9 @@ import org.aspectj.bridge.{ AbortException, IMessageHandler, IMessage, MessageHa
 import org.aspectj.tools.ajc.Main
 import sbt.Keys._
 import sbt.Project.Initialize
-
 import java.io.File
+import sbt.aspectj.nested.argument.Weave
+import sbt.aspectj.nested.argument.Generic
 
 object Keys {
   def AspectJConf = config("aspectj") hide
@@ -38,17 +39,19 @@ object Keys {
   val sourceLevel = SettingKey[String]("source-level", "The AspectJ source level option.")
   val verbose = SettingKey[Boolean]("verbose", "Enable the -verbose AspectJ option.")
 
-//  val compiledClasses = TaskKey[File]("compiled-classes", "The compile classes directory (after compile).")
+  //  val compiledClasses = TaskKey[File]("compiled-classes", "The compile classes directory (after compile).")
   // -> inputClasses
   val aspectjClasspath = TaskKey[Seq[File]]("aspectj-classpath", "The classpath used for running AspectJ.")
-  val baseOptions = SettingKey[Seq[String]]("base-options", "The showWeaveInfo, verbose, and sourceLevel settings as options.")
+  val aspectjOptions = SettingKey[Seq[String]]("aspectj-options", "The showWeaveInfo, verbose, and sourceLevel settings as options.")
   // -> inputRules
   val inputs = TaskKey[Seq[File]]("aspectj-inputs", "The jars or classes directories to weave.")
   val binaryAspects = TaskKey[Seq[File]]("binary-aspects", "Binary aspects passed to the -aspectpath AspectJ option.")
   val aspects = TaskKey[Seq[Aspect]]("aspectj-aspects", "All aspects, both source and binary.")
-  val aspectMappings = TaskKey[Seq[Mapping]]("aspectj-mappings", "Mappings from inputs, through aspects, to outputs.")
+  val aspectjMappings = TaskKey[Seq[Mapping]]("aspectj-mappings", "Mappings from inputs, through aspects, to outputs.")
 
-  val weave = TaskKey[Seq[File]]("weave", "Weave with AspectJ.")
+  val weave = TaskKey[Seq[File]]("aspectj-weave", "Weave with AspectJ.")
+  val aspectjWeaveArg = TaskKey[Weave]("aspectj-weave-arguments", "Project settings for weave task.")
+  val aspectjGenericArg = TaskKey[Generic]("aspectj-generic-arguments", "Project settings for generic task.")
 
   // load-time weaving support - compiling and including aspects in package-bin
   val aspectClassesDirectory = SettingKey[File]("aspect-classes-directory")

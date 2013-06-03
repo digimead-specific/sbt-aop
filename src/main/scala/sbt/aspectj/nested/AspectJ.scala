@@ -27,24 +27,26 @@ import org.aspectj.bridge.{ AbortException, IMessageHandler, IMessage, MessageHa
 import org.aspectj.tools.ajc.Main
 import sbt.Keys.Classpath
 import Keys._
+import sbt.aspectj.nested.argument.Generic
+import sbt.aspectj.nested.argument.Weave
 
 object AspectJ {
-  def weave(cache: File, mappings: Seq[Mapping], baseOpts: Seq[String], cp: Seq[File])(implicit arg: Plugin.TaskArgument): Seq[File] = {
+  def weave(weave: Weave)(implicit arg: Generic): Seq[File] = {
     arg.log.info(logPrefix(arg.name) + "Weaving aspects")
-    val cacheDir = cache / "aspectj"
+    val cacheDir = weave.cache / "aspectj"
     arg.log.debug(logPrefix(arg.name) + "Search for cached aspects in " + cacheDir)
     val cached = FileFunction.cached(cacheDir / "ajc-inputs", FilesInfo.hash) { _ =>
-      val withPrevious = mappings.zipWithIndex map { case (m, i) => (mappings.take(i), m) }
+      val withPrevious = weave.mappings.zipWithIndex map { case (m, i) => (weave.mappings.take(i), m) }
       (withPrevious map {
         case (previousMappings, mapping) =>
-          val classpath = insertInstrumentedJars(cp, previousMappings)
+          val classpath = insertInstrumentedJars(weave.classpath, previousMappings)
           val classpathOpts = Seq("-classpath", classpath.absString)
-          val options = baseOpts ++ classpathOpts
+          val options = weave.options ++ classpathOpts
           ajcRun(mapping.in, mapping.aspects, mapping.out, options, cacheDir)
           mapping.out
       }).toSet
     }
-    val cacheInputs = mappings.flatMap(mapping => {
+    val cacheInputs = weave.mappings.flatMap(mapping => {
       val input = mapping.in
       val aspects = mapping.aspects.map(_.file)
       if (input.isDirectory)
@@ -67,7 +69,7 @@ object AspectJ {
       { if (in.isDirectory) Seq("-d", out.absolutePath) else Seq("-outjar", out.absolutePath) } ++
       sources.map(_.file.absolutePath)
   }
-  protected def ajcRun(input: File, aspects: Seq[Aspect], output: File, baseOptions: Seq[String], cacheDir: File)(implicit arg: Plugin.TaskArgument): Unit = {
+  protected def ajcRun(input: File, aspects: Seq[Aspect], output: File, baseOptions: Seq[String], cacheDir: File)(implicit arg: Generic): Unit = {
     IO.createDirectory(output.getParentFile)
     if (aspects.isEmpty) {
       arg.log.info(logPrefix(arg.name) + "No aspects for %s" format input)
@@ -89,7 +91,7 @@ object AspectJ {
       ajcRunMain(options)
     }
   }
-  def ajcRunMain(options: Array[String])(implicit arg: Plugin.TaskArgument): Unit = {
+  def ajcRunMain(options: Array[String])(implicit arg: Generic): Unit = {
     arg.log.debug(logPrefix(arg.name) + "Running AspectJ compiler with:")
     arg.log.debug(logPrefix(arg.name) + "ajc " + options.mkString(" "))
     val ajc = new Main

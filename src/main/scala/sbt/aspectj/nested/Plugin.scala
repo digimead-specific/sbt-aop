@@ -28,6 +28,9 @@ import Keys._
 import java.io.File
 import org.aspectj.bridge.{ AbortException, IMessageHandler, IMessage, MessageHandler }
 import org.aspectj.tools.ajc.Main
+import sbt.aspectj.nested.argument.Weave
+import sbt.aspectj.nested.argument.Generic
+import sbt.aspectj.nested.argument.Weave
 
 object Plugin extends sbt.Plugin {
   implicit def option2rich[T](option: Option[T]): RichOption[T] = new RichOption(option)
@@ -45,15 +48,17 @@ object Plugin extends sbt.Plugin {
     //dependencyClasspath <<= dependencyClasspath in Compile,
     //compiledClasses <<= compileClasses,
     aspectjClasspath <<= (fullClasspath in Compile) map { _.files },
-    baseOptions <<= baseOptionsSettings,
-    inputs := Seq(new File(".")),
+    aspectjWeaveArg <<= aspectjWeaveArgTask,
+    aspectjGenericArg <<= aspectjGenericArgTask,
+    aspectjOptions <<= baseOptionsSettings,
+    inputs := Seq.empty,
     includeFilter := "*.aj",
     excludeFilter := HiddenFileFilter,
     sources <<= sourcesTask,
     binaryAspects := Seq.empty,
     aspects <<= aspectsTask,
     aspectjFilter := { (f, a) => a },
-    aspectMappings <<= aspectMappingsTask,
+    aspectjMappings <<= aspectMappingsTask,
     copyResources <<= copyResourcesTask,
     weave <<= weaveTask,
     aspectClassesDirectory <<= outputDirectory / "classes",
@@ -97,12 +102,17 @@ object Plugin extends sbt.Plugin {
   def sourcesTask = (sourceDirectories, includeFilter, excludeFilter) map (
     (dirs, include, exclude) => dirs.descendantsExcept(include, exclude).get)
   /** Weave inputs */
-  def weaveTask = (cacheDirectory, aspectMappings, baseOptions, aspectjClasspath, copyResources, state, streams, thisProjectRef) map {
-    (cacheDirectory, aspectMappings, baseOptions, aspectjClasspath, _, state, streams, thisProjectRef) =>
-      implicit val arg = TaskArgument(state, thisProjectRef, Some(streams))
-      arg.log.debug(logPrefix(arg.name) + "weave")
-      AspectJ.weave(cacheDirectory, aspectMappings, baseOptions, aspectjClasspath)
+  def weaveTask = (aspectjWeaveArg, aspectjGenericArg) map { (aspectjWeaveArg, aspectjGenericArg) =>
+    aspectjGenericArg.log.debug(logPrefix(aspectjGenericArg.name) + "weave")
+    AspectJ.weave(aspectjWeaveArg)(aspectjGenericArg)
   }
+  /** Aggregate parameters that required by 'weave' task */
+  def aspectjWeaveArgTask = (cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath, copyResources) map (
+    (cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath, _) =>
+      Weave(cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath))
+  /** Aggregate parameters for generic task */
+  def aspectjGenericArgTask = (state, streams, thisProjectRef) map (
+    (state, streams, thisProjectRef) => Generic(state, thisProjectRef, Some(streams)))
 
   def instrumented(input: File, outputDir: File): File = {
     val (base, ext) = input.baseAndExt
@@ -113,7 +123,7 @@ object Plugin extends sbt.Plugin {
     outputDir / outputName
   }
 
-  def copyResourcesTask = (cacheDirectory, aspectMappings, copyResources in Compile) map {
+  def copyResourcesTask = (cacheDirectory, aspectjMappings, copyResources in Compile) map {
     (cache, mappings, resourceMappings) =>
       val cacheFile = cache / "aspectj" / "resource-sync"
       val mapped = mappings flatMap { mapping =>
@@ -127,14 +137,14 @@ object Plugin extends sbt.Plugin {
 
   def useInstrumentedJars(config: Configuration) = useInstrumentedClasses(config)
   def useInstrumentedClasses(config: Configuration) = {
-    (sbt.Keys.fullClasspath in config, aspectMappings in AspectJConf, Keys.weave in AspectJConf) map {
+    (sbt.Keys.fullClasspath in config, aspectjMappings in AspectJConf, Keys.weave in AspectJConf) map {
       (cp, mappings, woven) => AspectJ.insertInstrumentedClasses(cp.files, mappings)
     }
   }
 
-  def compileAspectsTask = (sources, outxml, aspectjClasspath, baseOptions, aspectClassesDirectory, cacheDirectory, name, streams, state, streams, thisProjectRef) map {
+  def compileAspectsTask = (sources, outxml, aspectjClasspath, aspectjOptions, aspectClassesDirectory, cacheDirectory, name, streams, state, streams, thisProjectRef) map {
     (aspects, outxml, classpath, opts, dir, cacheDir, name, s, state, streams, thisProjectRef) =>
-      implicit val arg = TaskArgument(state, thisProjectRef, Some(streams))
+      implicit val arg = Generic(state, thisProjectRef, Some(streams))
       val cachedCompile = FileFunction.cached(cacheDir / "ajc-compile", FilesInfo.hash) { _ =>
         val sourceCount = Util.counted("AspectJ source", "", "s", aspects.length)
         sourceCount foreach { count => s.log.info("Compiling %s to %s..." format (count, dir)) }
@@ -168,47 +178,6 @@ object Plugin extends sbt.Plugin {
 
   def javaAgentOptions = weaveAgentJar map { weaver => weaver.toSeq map { "-javaagent:" + _ } }
 
-  /** Consolidated argument with all required information */
-  case class TaskArgument(
-    /** The data structure representing all command execution information. */
-    state: State,
-    // It is more reasonable to pass it from SBT than of fetch it directly.
-    /** The reference to the current project. */
-    thisProjectRef: ProjectRef,
-    /** The structure that contains reference to log facilities. */
-    streams: Option[sbt.std.TaskStreams[ScopedKey[_]]] = None) {
-    /** Extracted state projection */
-    lazy val extracted = Project.extract(state)
-    /** SBT logger */
-    val log = streams.map(_.log) getOrElse {
-      // Heh, another feature not bug? SBT 0.12.3
-      // MultiLogger and project level is debug, but ConsoleLogger is still info...
-      // Don't care about CPU time
-      val globalLoggin = (state.getClass().getDeclaredMethods().find(_.getName() == "globalLogging")) match {
-        case Some(method) =>
-          // SBT 0.12+
-          method.invoke(state).asInstanceOf[GlobalLogging]
-        case None =>
-          // SBT 0.11.x
-          CommandSupport.asInstanceOf[{ def globalLogging(s: State): GlobalLogging }].globalLogging(state)
-      }
-      import globalLoggin._
-      full match {
-        case logger: AbstractLogger =>
-          val level = logLevel in thisScope get extracted.structure.data
-          level.foreach(logger.setLevel(_)) // force level
-          logger
-        case logger =>
-          logger
-      }
-    }
-    /** Current project name */
-    val name: String = (sbt.Keys.name in thisScope get extracted.structure.data) getOrElse thisProjectRef.project.toString()
-    /** Scope of current project */
-    lazy val thisScope = Load.projectScope(thisProjectRef)
-    /** Scope of current project withing plugin configuration */
-    lazy val thisOSGiScope = thisScope.copy(config = Select(AspectJConf))
-  }
   class RichOption[T](option: Option[T]) {
     def getOrThrow(onError: String) = option getOrElse { throw new NoSuchElementException(onError) }
   }
