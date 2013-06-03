@@ -30,45 +30,46 @@ import org.aspectj.bridge.{ AbortException, IMessageHandler, IMessage, MessageHa
 import org.aspectj.tools.ajc.Main
 import sbt.aspectj.nested.argument.Weave
 import sbt.aspectj.nested.argument.Generic
-import sbt.aspectj.nested.argument.Weave
 
 object Plugin extends sbt.Plugin {
   implicit def option2rich[T](option: Option[T]): RichOption[T] = new RichOption(option)
   def logPrefix(name: String) = "[AspectJ nested:%s] ".format(name)
 
   lazy val defaultSettings = inConfig(AspectJConf)(Seq(
-    aspectjVersion := "1.7.2",
-    showWeaveInfo := false,
-    verbose := false,
-    sourceLevel := "-1.6",
-    aspectjSource <<= (sourceDirectory in Compile) / "aspectj",
-    sourceDirectories <<= Seq(aspectjSource).join,
-    outputDirectory <<= crossTarget / "aspectj",
-    //managedClasspath <<= (configuration, classpathTypes, update) map Classpaths.managedJars,
-    //dependencyClasspath <<= dependencyClasspath in Compile,
+    //aspectProducts <<= compileIfEnabled,
+    //compileAspects <<= compileAspectsTask,
     //compiledClasses <<= compileClasses,
-    aspectjClasspath <<= (fullClasspath in Compile) map { _.files },
-    aspectjWeaveArg <<= aspectjWeaveArgTask,
-    aspectjGenericArg <<= aspectjGenericArgTask,
-    aspectjOptions <<= baseOptionsSettings,
-    inputs := Seq.empty,
-    includeFilter := "*.aj",
-    excludeFilter := HiddenFileFilter,
-    sources <<= sourcesTask,
-    binaryAspects := Seq.empty,
-    aspects <<= aspectsTask,
-    aspectjFilter := { (f, a) => a },
-    aspectjMappings <<= aspectMappingsTask,
-    copyResources <<= copyResourcesTask,
-    weave <<= weaveTask,
-    aspectClassesDirectory <<= outputDirectory / "classes",
-    outxml := true,
-    compileAspects <<= compileAspectsTask,
-    enableProducts := false,
-    aspectProducts <<= compileIfEnabled,
+    //dependencyClasspath <<= dependencyClasspath in Compile,
+    //managedClasspath <<= (configuration, classpathTypes, update) map Classpaths.managedJars,
     //products in Compile <<= combineProducts,
-    weaveAgentJar <<= javaAgent,
-    weaveAgentOptions <<= javaAgentOptions)) ++ dependencySettings
+    //enableProducts := false,
+    //aspectjClassesDirectory <<= aspectjOutput / "classes",
+    aspectjAspects <<= aspectsTask,
+    aspectjBinary := Seq.empty,
+    aspectjClasspath <<= (fullClasspath in Compile) map { _.files },
+    aspectjFilter := { (f, a) => a },
+    aspectjGenericArg <<= aspectjGenericArgTask,
+    aspectjInputs := Seq.empty,
+    aspectjMappings <<= aspectMappingsTask,
+    aspectjOptions <<= baseOptionsSettings,
+    aspectjOutput <<= crossTarget / "aspectj",
+    aspectjOutxml := true,
+    aspectjShowWeaveInfo := false,
+    aspectjSource <<= (sourceDirectory in Compile) / "aspectj",
+    aspectjSourceLevel := "-1.6",
+    aspectjVerbose := false,
+    aspectjVersion := "1.7.2",
+    aspectjWeaveAgentJar <<= javaAgent,
+    aspectjWeaveAgentOptions <<= javaAgentOptions,
+    aspectjWeaveArg <<= aspectjWeaveArgTask,
+    copyResources <<= copyResourcesTask,
+    excludeFilter := HiddenFileFilter,
+    includeFilter := "*.aj",
+    sourceDirectories <<= Seq(aspectjSource).join,
+    sources <<= sourcesTask)) ++
+    // global settings
+    Seq(aspectjWeave <<= weaveTask)
+  /** AspectJ dependencies */
   def dependencySettings = Seq(
     ivyConfigurations += AspectJConf,
     libraryDependencies <++= (aspectjVersion in AspectJConf) { version =>
@@ -77,23 +78,24 @@ object Plugin extends sbt.Plugin {
         "org.aspectj" % "aspectjweaver" % version % AspectJConf.name,
         "org.aspectj" % "aspectjrt" % version % AspectJConf.name)
     })
-
-  //def compileClasses = (compile in Compile, compileInputs in Compile) map {
-  //  (_, inputs) => inputs.config.classesDirectory
-  //}
-
-  //def combineClasspaths = (managedClasspath, dependencyClasspath, compiledClasses) map {
-  //  (mcp, dcp, classes) => Attributed.blank(classes) +: (mcp ++ dcp)
-  //}
+  /** AspectJ dependencies with public AspectJRT dependency */
+  def dependencySettingsRT = Seq(
+    ivyConfigurations += AspectJConf,
+    libraryDependencies <++= (aspectjVersion in AspectJConf) { version =>
+      Seq(
+        "org.aspectj" % "aspectjtools" % version % AspectJConf.name,
+        "org.aspectj" % "aspectjweaver" % version % AspectJConf.name,
+        "org.aspectj" % "aspectjrt" % version)
+    })
 
   /** Collect mappings from available aspects and filters */
-  def aspectMappingsTask = (inputs, aspects, aspectjFilter, outputDirectory) map ((in, aspects, filter, dir) =>
+  def aspectMappingsTask = (aspectjInputs, aspectjAspects, aspectjFilter, aspectjOutput) map ((in, aspects, filter, dir) =>
     in map { input => Mapping(input, filter(input, aspects), instrumented(input, dir)) })
   /** Collect all available aspects */
-  def aspectsTask = (sources, binaryAspects) map ((s, b) =>
+  def aspectsTask = (sources, aspectjBinary) map ((s, b) =>
     (s map { Aspect(_, binary = false) }) ++ (b map { Aspect(_, binary = true) }))
   /** Build baseOptions settings value. */
-  def baseOptionsSettings = (showWeaveInfo, verbose, sourceLevel) { (info, verbose, level) =>
+  def baseOptionsSettings = (aspectjShowWeaveInfo, aspectjVerbose, aspectjSourceLevel) { (info, verbose, level) =>
     (if (info) Seq("-showWeaveInfo") else Seq.empty[String]) ++
       (if (verbose) Seq("-verbose") else Seq.empty[String]) ++
       Seq(level)
@@ -102,7 +104,7 @@ object Plugin extends sbt.Plugin {
   def sourcesTask = (sourceDirectories, includeFilter, excludeFilter) map (
     (dirs, include, exclude) => dirs.descendantsExcept(include, exclude).get)
   /** Weave inputs */
-  def weaveTask = (aspectjWeaveArg, aspectjGenericArg) map { (aspectjWeaveArg, aspectjGenericArg) =>
+  def weaveTask = (aspectjWeaveArg in AspectJConf, aspectjGenericArg in AspectJConf) map { (aspectjWeaveArg, aspectjGenericArg) =>
     aspectjGenericArg.log.debug(logPrefix(aspectjGenericArg.name) + "weave")
     AspectJ.weave(aspectjWeaveArg)(aspectjGenericArg)
   }
@@ -135,14 +137,43 @@ object Plugin extends sbt.Plugin {
       mapped
   }
 
-  def useInstrumentedJars(config: Configuration) = useInstrumentedClasses(config)
-  def useInstrumentedClasses(config: Configuration) = {
-    (sbt.Keys.fullClasspath in config, aspectjMappings in AspectJConf, Keys.weave in AspectJConf) map {
-      (cp, mappings, woven) => AspectJ.insertInstrumentedClasses(cp.files, mappings)
-    }
+  def useInstrumentedJars(config: Configuration) =
+    useInstrumentedClasses(config)
+  def useInstrumentedClasses(config: Configuration) =
+    (sbt.Keys.fullClasspath in config, aspectjMappings in AspectJConf, aspectjWeave in AspectJConf) map (
+      (cp, mappings, woven) => AspectJ.insertInstrumentedClasses(cp.files, mappings))
+
+  def ajcCompileOptions(aspects: Seq[File], outxml: Boolean, classpath: Seq[File], baseOptions: Seq[String], output: File): Seq[String] = {
+    baseOptions ++
+      Seq("-XterminateAfterCompilation") ++
+      Seq("-classpath", classpath.absString) ++
+      Seq("-d", output.absolutePath) ++
+      (if (outxml) Seq("-outxml") else Seq.empty[String]) ++
+      aspects.map(_.absolutePath)
   }
 
-  def compileAspectsTask = (sources, outxml, aspectjClasspath, aspectjOptions, aspectClassesDirectory, cacheDirectory, name, streams, state, streams, thisProjectRef) map {
+  def javaAgent = update map { report =>
+    report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption
+  }
+
+  def javaAgentOptions = aspectjWeaveAgentJar map { weaver => weaver.toSeq map { "-javaagent:" + _ } }
+
+  class RichOption[T](option: Option[T]) {
+    def getOrThrow(onError: String) = option getOrElse { throw new NoSuchElementException(onError) }
+  }
+
+  /*
+   * Load time weaving
+   */
+
+  //def compileClasses = (compile in Compile, compileInputs in Compile) map {
+  //  (_, inputs) => inputs.config.classesDirectory
+  //}
+
+  //def combineClasspaths = (managedClasspath, dependencyClasspath, compiledClasses) map {
+  //  (mcp, dcp, classes) => Attributed.blank(classes) +: (mcp ++ dcp)
+  //}
+  /*def compileAspectsTask = (sources, aspectjOutxml, aspectjClasspath, aspectjOptions, aspectjClassesDirectory, cacheDirectory, name, streams, state, streams, thisProjectRef) map {
     (aspects, outxml, classpath, opts, dir, cacheDir, name, s, state, streams, thisProjectRef) =>
       implicit val arg = Generic(state, thisProjectRef, Some(streams))
       val cachedCompile = FileFunction.cached(cacheDir / "ajc-compile", FilesInfo.hash) { _ =>
@@ -155,30 +186,11 @@ object Plugin extends sbt.Plugin {
       val inputs = aspects.toSet
       cachedCompile(inputs)
       dir
-  }
-
-  def ajcCompileOptions(aspects: Seq[File], outxml: Boolean, classpath: Seq[File], baseOptions: Seq[String], output: File): Seq[String] = {
-    baseOptions ++
-      Seq("-XterminateAfterCompilation") ++
-      Seq("-classpath", classpath.absString) ++
-      Seq("-d", output.absolutePath) ++
-      (if (outxml) Seq("-outxml") else Seq.empty[String]) ++
-      aspects.map(_.absolutePath)
-  }
-
-  def compileIfEnabled = (enableProducts, compileAspects.task) flatMap {
-    (enable, compile) => if (enable) (compile map { dir => Seq(dir) }) else task { Seq.empty[File] }
-  }
+  }*/
+  //def compileIfEnabled = (enableProducts, compileAspects.task) flatMap {
+  //  (enable, compile) => if (enable) (compile map { dir => Seq(dir) }) else task { Seq.empty[File] }
+  //}
 
   //def combineProducts = (products in Compile, aspectProducts) map { _ ++ _ }
 
-  def javaAgent = update map { report =>
-    report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption
-  }
-
-  def javaAgentOptions = weaveAgentJar map { weaver => weaver.toSeq map { "-javaagent:" + _ } }
-
-  class RichOption[T](option: Option[T]) {
-    def getOrThrow(onError: String) = option getOrElse { throw new NoSuchElementException(onError) }
-  }
 }

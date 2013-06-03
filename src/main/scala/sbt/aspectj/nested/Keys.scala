@@ -19,46 +19,41 @@
 
 package sbt.aspectj.nested
 
-import sbt._
-import org.aspectj.bridge.{ AbortException, IMessageHandler, IMessage, MessageHandler }
-import org.aspectj.tools.ajc.Main
-import sbt.Keys._
-import sbt.Project.Initialize
 import java.io.File
-import sbt.aspectj.nested.argument.Weave
+
+import sbt._
 import sbt.aspectj.nested.argument.Generic
+import sbt.aspectj.nested.argument.Weave
+
+//val aspectjClassesDirectory = SettingKey[File]("aspectj-classes-directory")
+//  val compiledClasses = TaskKey[File]("compiled-classes", "The compile classes directory (after compile).")
+// -> inputClasses
+// -> inputRules
+// load-time weaving support - compiling and including aspects in package-bin
+//val compileAspects = TaskKey[File]("compile-aspects", "Compile aspects for load-time weaving.")
+//val enableProducts = TaskKey[Boolean]("enableProducts", "Enable or disable compiled aspects in compile products.")
+//val aspectProducts = TaskKey[Seq[File]]("aspect-products", "Optionally compiled aspects (if produce-aspects).")
 
 object Keys {
   def AspectJConf = config("aspectj") hide
 
-  val aspectjFilter = SettingKey[(File, Seq[Aspect]) => Seq[Aspect]]("aspect-filter", "Filter for aspects. Used to create aspect mappings.")
-  val aspectjSource = SettingKey[File]("aspectj-source", "Source directory for aspects.")
-  val aspectjVersion = SettingKey[String]("aspectj-version", "AspectJ version to use.")
-  val outputDirectory = SettingKey[File]("output-directory", "Output directory for AspectJ instrumentation.")
-  val showWeaveInfo = SettingKey[Boolean]("show-weave-info", "Enable the -showWeaveInfo AspectJ option.")
-  val sourceLevel = SettingKey[String]("source-level", "The AspectJ source level option.")
-  val verbose = SettingKey[Boolean]("verbose", "Enable the -verbose AspectJ option.")
-
-  //  val compiledClasses = TaskKey[File]("compiled-classes", "The compile classes directory (after compile).")
-  // -> inputClasses
+  val aspectjAspects = TaskKey[Seq[Aspect]]("aspectj-aspects", "All aspects, both source and binary.")
+  val aspectjBinary = TaskKey[Seq[File]]("aspectj-binary", "Binary aspects passed to the -aspectpath AspectJ option.")
   val aspectjClasspath = TaskKey[Seq[File]]("aspectj-classpath", "The classpath used for running AspectJ.")
-  val aspectjOptions = SettingKey[Seq[String]]("aspectj-options", "The showWeaveInfo, verbose, and sourceLevel settings as options.")
-  // -> inputRules
-  val inputs = TaskKey[Seq[File]]("aspectj-inputs", "The jars or classes directories to weave.")
-  val binaryAspects = TaskKey[Seq[File]]("binary-aspects", "Binary aspects passed to the -aspectpath AspectJ option.")
-  val aspects = TaskKey[Seq[Aspect]]("aspectj-aspects", "All aspects, both source and binary.")
-  val aspectjMappings = TaskKey[Seq[Mapping]]("aspectj-mappings", "Mappings from inputs, through aspects, to outputs.")
-
-  val weave = TaskKey[Seq[File]]("aspectj-weave", "Weave with AspectJ.")
-  val aspectjWeaveArg = TaskKey[Weave]("aspectj-weave-arguments", "Project settings for weave task.")
+  val aspectjFilter = SettingKey[(File, Seq[Aspect]) => Seq[Aspect]]("aspectj-filter", "Filter for aspects. Used to create aspect mappings.")
   val aspectjGenericArg = TaskKey[Generic]("aspectj-generic-arguments", "Project settings for generic task.")
-
-  // load-time weaving support - compiling and including aspects in package-bin
-  val aspectClassesDirectory = SettingKey[File]("aspect-classes-directory")
-  val outxml = SettingKey[Boolean]("outxml")
-  val compileAspects = TaskKey[File]("compile-aspects", "Compile aspects for load-time weaving.")
-  val enableProducts = TaskKey[Boolean]("enableProducts", "Enable or disable compiled aspects in compile products.")
-  val aspectProducts = TaskKey[Seq[File]]("aspect-products", "Optionally compiled aspects (if produce-aspects).")
-  val weaveAgentJar = TaskKey[Option[File]]("weave-agent-jar", "Location of AspectJ weaver.")
-  val weaveAgentOptions = TaskKey[Seq[String]]("weave-agent-options", "JVM options for AspectJ java agent.")
+  val aspectjInputs = TaskKey[Seq[File]]("aspectj-inputs", "The jars or classes directories to weave.")
+  val aspectjMappings = TaskKey[Seq[Mapping]]("aspectj-mappings", "Mappings from inputs, through aspects, to outputs.")
+  val aspectjOptions = SettingKey[Seq[String]]("aspectj-options", "The showWeaveInfo, verbose, and sourceLevel settings as options.")
+  val aspectjOutput = SettingKey[File]("aspectj-output", "Output directory for AspectJ instrumentation.")
+  val aspectjOutxml = SettingKey[Boolean]("aspectj-outxml")
+  val aspectjShowWeaveInfo = SettingKey[Boolean]("aspectj-show-weave-info", "Enable the -showWeaveInfo AspectJ option.")
+  val aspectjSource = SettingKey[File]("aspectj-source", "Source directory for aspects.")
+  val aspectjSourceLevel = SettingKey[String]("aspectj-source-level", "The AspectJ source level option.")
+  val aspectjVerbose = SettingKey[Boolean]("aspectj-verbose", "Enable the -verbose AspectJ option.")
+  val aspectjVersion = SettingKey[String]("aspectj-version", "AspectJ version to use.")
+  val aspectjWeave = TaskKey[Seq[File]]("aspectj-weave", "Weave with AspectJ.")
+  val aspectjWeaveAgentJar = TaskKey[Option[File]]("aspectj-weave-agent-jar", "Location of AspectJ weaver.")
+  val aspectjWeaveAgentOptions = TaskKey[Seq[String]]("aspectj-weave-agent-options", "JVM options for AspectJ java agent.")
+  val aspectjWeaveArg = TaskKey[Weave]("aspectj-weave-arguments", "Project settings for weave task.")
 }
