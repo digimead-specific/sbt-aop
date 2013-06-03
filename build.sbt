@@ -1,11 +1,11 @@
 
 sbtPlugin := true
 
-organization := "com.typesafe.sbt"
+organization := "org.digimead"
 
-name := "sbt-aspectj"
+name := "sbt-aspectj-nested"
 
-version := "0.8.3-SNAPSHOT"
+version <<= (baseDirectory) { (b) => scala.io.Source.fromFile(b / "version").mkString.trim }
 
 libraryDependencies += "org.aspectj" % "aspectjtools" % "1.7.2"
 
