@@ -43,6 +43,7 @@ object Keys {
   val aspectjFilter = SettingKey[(File, Seq[Aspect]) => Seq[Aspect]]("aspectj-filter", "Filter for aspects. Used to create aspect mappings.")
   val aspectjGenericArg = TaskKey[Generic]("aspectj-generic-arguments", "Project settings for generic task.")
   val aspectjInputs = TaskKey[Seq[File]]("aspectj-inputs", "The jars or classes directories to weave.")
+  val aspectjInputResources = TaskKey[Seq[(File,File)]]("aspectj-input-resources", "The list of project resources that are copied to weaved directories with respect to aspectjMappings.")
   val aspectjMappings = TaskKey[Seq[Mapping]]("aspectj-mappings", "Mappings from inputs, through aspects, to outputs.")
   val aspectjOptions = SettingKey[Seq[String]]("aspectj-options", "The showWeaveInfo, verbose, and sourceLevel settings as options.")
   val aspectjOutput = SettingKey[File]("aspectj-output", "Output directory for AspectJ instrumentation.")

@@ -50,6 +50,7 @@ object Plugin extends sbt.Plugin {
     aspectjFilter := { (f, a) => a },
     aspectjGenericArg <<= aspectjGenericArgTask,
     aspectjInputs := Seq.empty,
+    aspectjInputResources <<= (copyResources in Compile, copyResources in Test) map (_ ++ _),
     aspectjMappings <<= aspectMappingsTask,
     aspectjOptions <<= baseOptionsSettings,
     aspectjOutput <<= crossTarget / "aspectj",
@@ -125,12 +126,27 @@ object Plugin extends sbt.Plugin {
     outputDir / outputName
   }
 
-  def copyResourcesTask = (cacheDirectory, aspectjMappings, copyResources in Compile) map {
-    (cache, mappings, resourceMappings) =>
+  def copyResourcesTask = (cacheDirectory, aspectjMappings, aspectjInputResources, state, thisProjectRef, streams) map {
+    (cache, mappings, aspectjInputResources, state, thisProjectRef, streams) =>
+      val arg = Generic(state, thisProjectRef, Some(streams))
+      arg.log.debug(logPrefix(arg.name) + "Copy resources.")
+
       val cacheFile = cache / "aspectj" / "resource-sync"
+      // list of resoirce tuples (old file location -> instrumented file location) per aspectjMappings
       val mapped = mappings flatMap { mapping =>
         if (mapping.in.isDirectory) {
-          resourceMappings map (_._2) x rebase(mapping.in, mapping.out)
+          /*
+           * rebase resource(_._2)
+           *   from mapping.in (.../abc/def/target/scala-2.10/test-classes/...)
+           *   to mapping.out (.../target/scala-2.10/aspectj/test-classes-instrumented/...)
+           * returns None if aspectjInputResources entry is "foreign" resource,
+           *  without relation to current mapping
+           */
+          val result = aspectjInputResources map (_._2) x (rebase(mapping.in, mapping.out), false)
+          result.map {
+            case (from, to) => arg.log.debug(logPrefix(arg.name) + "Copy resource %s for mapping '%s'.".format(from, mapping.in.name))
+          }
+          result
         } else Seq.empty
       }
       Sync(cacheFile)(mapped)

@@ -1,5 +1,8 @@
-sbt-aspectj
-===========
+sbt-aspectj-nested
+==================
+
+TODO Keys
+
 
 [sbt] plugin for weaving with [aspectj]. This plugin requires sbt 0.12.
 
