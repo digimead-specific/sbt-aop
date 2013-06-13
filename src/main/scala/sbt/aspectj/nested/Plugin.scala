@@ -46,11 +46,11 @@ object Plugin extends sbt.Plugin {
     //aspectjClassesDirectory <<= aspectjOutput / "classes",
     aspectjAspects <<= aspectsTask,
     aspectjBinary := Seq.empty,
-    aspectjClasspath <<= (fullClasspath in Compile) map { _.files },
+    aspectjClasspath <<= (externalDependencyClasspath in Compile) map { _.files },
     aspectjFilter := { (f, a) => a },
     aspectjGenericArg <<= aspectjGenericArgTask,
     aspectjInputs := Seq.empty,
-    aspectjInputResources <<= (copyResources in Compile, copyResources in Test) map (_ ++ _),
+    aspectjInputResources <<= copyResources in Compile,
     aspectjMappings <<= aspectMappingsTask,
     aspectjOptions <<= baseOptionsSettings,
     aspectjOutput <<= crossTarget / "aspectj",
@@ -110,7 +110,7 @@ object Plugin extends sbt.Plugin {
     AspectJ.weave(aspectjWeaveArg)(aspectjGenericArg)
   }
   /** Aggregate parameters that required by 'weave' task */
-  def aspectjWeaveArgTask = (cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath, copyResources) map (
+  def aspectjWeaveArgTask = (cacheDirectory, aspectjMappings in AJConf, aspectjOptions in AJConf, aspectjClasspath in AJConf, copyResources in AJConf) map (
     (cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath, _) =>
       Weave(cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath))
   /** Aggregate parameters for generic task */
@@ -126,7 +126,7 @@ object Plugin extends sbt.Plugin {
     outputDir / outputName
   }
 
-  def copyResourcesTask = (cacheDirectory, aspectjMappings, aspectjInputResources, state, thisProjectRef, streams) map {
+  def copyResourcesTask = (cacheDirectory, aspectjMappings in AJConf, aspectjInputResources in AJConf, state, thisProjectRef, streams) map {
     (cache, mappings, aspectjInputResources, state, thisProjectRef, streams) =>
       val arg = Generic(state, thisProjectRef, Some(streams))
       arg.log.debug(logPrefix(arg.name) + "Copy resources.")
