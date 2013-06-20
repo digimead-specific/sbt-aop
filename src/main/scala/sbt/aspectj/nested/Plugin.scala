@@ -95,6 +95,13 @@ object Plugin extends sbt.Plugin {
   /** Collect all available aspects */
   def aspectsTask = (sources, aspectjBinary) map ((s, b) =>
     (s map { Aspect(_, binary = false) }) ++ (b map { Aspect(_, binary = true) }))
+  /** Aggregate parameters that required by 'weave' task */
+  def aspectjWeaveArgTask = (cacheDirectory, aspectjMappings in AJConf, aspectjOptions in AJConf, aspectjClasspath in AJConf, copyResources in AJConf) map (
+    (cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath, _) =>
+      Weave(cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath))
+  /** Aggregate parameters for generic task */
+  def aspectjGenericArgTask = (state, streams, thisProjectRef) map (
+    (state, streams, thisProjectRef) => Generic(state, thisProjectRef, Some(streams)))
   /** Build baseOptions settings value. */
   def baseOptionsSettings = (aspectjShowWeaveInfo, aspectjVerbose, aspectjSourceLevel) { (info, verbose, level) =>
     (if (info) Seq("-showWeaveInfo") else Seq.empty[String]) ++
@@ -109,13 +116,6 @@ object Plugin extends sbt.Plugin {
     aspectjGenericArg.log.debug(logPrefix(aspectjGenericArg.name) + "weave")
     AspectJ.weave(aspectjWeaveArg)(aspectjGenericArg)
   }
-  /** Aggregate parameters that required by 'weave' task */
-  def aspectjWeaveArgTask = (cacheDirectory, aspectjMappings in AJConf, aspectjOptions in AJConf, aspectjClasspath in AJConf, copyResources in AJConf) map (
-    (cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath, _) =>
-      Weave(cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath))
-  /** Aggregate parameters for generic task */
-  def aspectjGenericArgTask = (state, streams, thisProjectRef) map (
-    (state, streams, thisProjectRef) => Generic(state, thisProjectRef, Some(streams)))
 
   def instrumented(input: File, outputDir: File): File = {
     val (base, ext) = input.baseAndExt
