@@ -39,14 +39,7 @@ case class Generic(
     // Heh, another feature not bug? SBT 0.12.3
     // MultiLogger and project level is debug, but ConsoleLogger is still info...
     // Don't care about CPU time
-    val globalLoggin = (state.getClass().getDeclaredMethods().find(_.getName() == "globalLogging")) match {
-      case Some(method) =>
-        // SBT 0.12+
-        method.invoke(state).asInstanceOf[GlobalLogging]
-      case None =>
-        // SBT 0.11.x
-        CommandSupport.asInstanceOf[{ def globalLogging(s: State): GlobalLogging }].globalLogging(state)
-    }
+    val globalLoggin = sbt.aspect.nested.patch.Patch.getGlobalLogging(state)
     import globalLoggin._
     full match {
       case logger: AbstractLogger =>

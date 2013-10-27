@@ -59,7 +59,7 @@ object Plugin extends sbt.Plugin {
     aspectjSource <<= (sourceDirectory in Compile) / "aspectj",
     aspectjSourceLevel := "-1.6",
     aspectjVerbose := false,
-    aspectjVersion := "1.7.2",
+    aspectjVersion := "1.7.3",
     aspectjWeaveAgentJar <<= javaAgent,
     aspectjWeaveAgentOptions <<= javaAgentOptions,
     aspectjWeaveArg <<= aspectjWeaveArgTask,
@@ -95,13 +95,13 @@ object Plugin extends sbt.Plugin {
   /** Collect all available aspects */
   def aspectsTask = (sources, aspectjBinary) map ((s, b) =>
     (s map { Aspect(_, binary = false) }) ++ (b map { Aspect(_, binary = true) }))
+  /** Aggregate parameters for generic task */
+  def aspectjGenericArgTask = (state, streams, thisProjectRef) map (
+    (state, streams, thisProjectRef) => Generic(state, thisProjectRef, Some(streams)))
   /** Aggregate parameters that required by 'weave' task */
   def aspectjWeaveArgTask = (cacheDirectory, aspectjMappings in AJConf, aspectjOptions in AJConf, aspectjClasspath in AJConf, copyResources in AJConf) map (
     (cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath, _) =>
       Weave(cacheDirectory, aspectjMappings, aspectjOptions, aspectjClasspath))
-  /** Aggregate parameters for generic task */
-  def aspectjGenericArgTask = (state, streams, thisProjectRef) map (
-    (state, streams, thisProjectRef) => Generic(state, thisProjectRef, Some(streams)))
   /** Build baseOptions settings value. */
   def baseOptionsSettings = (aspectjShowWeaveInfo, aspectjVerbose, aspectjSourceLevel) { (info, verbose, level) =>
     (if (info) Seq("-showWeaveInfo") else Seq.empty[String]) ++
@@ -130,7 +130,6 @@ object Plugin extends sbt.Plugin {
     (cache, mappings, aspectjInputResources, state, thisProjectRef, streams) =>
       val arg = Generic(state, thisProjectRef, Some(streams))
       arg.log.debug(logPrefix(arg.name) + "Copy resources.")
-
       val cacheFile = cache / "aspectj" / "resource-sync"
       // list of resoirce tuples (old file location -> instrumented file location) per aspectjMappings
       val mapped = mappings flatMap { mapping =>
