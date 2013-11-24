@@ -1,74 +1,27 @@
-sbt-aspectj-nested
+SBT AspectJ Nested
 ==================
 
-TODO Keys
+AspectJ for hierarchical projects.
 
+[See SBT AspectJ Nested documentation](http://digimead-specific.github.io/sbt-aspectj-nested/).
 
-[sbt] plugin for weaving with [aspectj]. This plugin requires sbt 0.12.
+Authors
+-------
 
-
-Add plugin
-----------
-
-Add plugin to `project/plugins.sbt`. For example:
-
-    addSbtPlugin("com.typesafe.sbt" % "sbt-aspectj" % "0.8.1")
-
-
-Sample projects
----------------
-
-There are [runnable sample projects][samples] included as sbt scripted tests.
-
-
-Example settings
-----------------
-
-Set the aspectj inputs:
-
-```scala
-inputs in Aspectj <<= update map { report =>
-  report.matching(moduleFilter(organization = "com.typesafe.akka", name = "akka-actor*"))
-}
-```
-
-Replace the original jars in the test classpath with the instrumented classes:
-
-```scala
-fullClasspath in Test <<= SbtAspectj.useInstrumentedClasses(Test)
-```
-
-
-Weave
------
-
-The command to run the aspectj compiler is `aspectj:weave`.
-
-
-Mailing list
-------------
-
-Please use the [sbt mailing list][email] and prefix the subject with `[sbt-aspectj]`.
-
-
-Contribution policy
--------------------
-
-Contributions via GitHub pull requests are gladly accepted from their original
-author. Before we can accept pull requests, you will need to agree to the
-[Typesafe Contributor License Agreement][cla] online, using your GitHub account.
-
+* Alexey Aksenov
+* Peter Vlugter and others (as [sbt-aspectj][sa])
 
 License
 -------
 
-This code is open source software licensed under the [Apache 2.0 License]
-[apache]. Feel free to use it accordingly.
+SBT Dependency Manager is licensed to you under the terms of
+the Apache License, version 2.0, a copy of which has been
+included in the LICENSE file.
+Please check the individual source files for details.
 
+Copyright
+---------
 
-[sbt]: https://github.com/harrah/xsbt
-[aspectj]: http://www.eclipse.org/aspectj
-[samples]: https://github.com/sbt/sbt-aspectj/tree/master/src/sbt-test
-[email]: http://groups.google.com/group/simple-build-tool
-[cla]: http://www.typesafe.com/contribute/cla
-[apache]: http://www.apache.org/licenses/LICENSE-2.0.html
+Copyright © 2013 Alexey B. Aksenov/Ezh. All rights reserved.
+
+[sa]: https://github.com/sbt/sbt-aspectj

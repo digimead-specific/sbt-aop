@@ -1,0 +1,17 @@
+---
+out: index.html
+---
+
+SBT Aspectj Nested
+======================
+
+AspectJ for hierarchical projects.
+
+<hr/>
+
+> [Latest stable version $version$]($stable$)
+
+> [Latest development version $version$]($development$)
+
+[sc]: http://eed3si9n.com/testing-sbt-plugins
+[sp]: https://github.com/digimead/sbt-dependency-manager/tree/master/src/sbt-test/dependency-manager/simple
