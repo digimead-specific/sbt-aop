@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package sbt.aspect.nested.patch
+package sbt.aspectj.nested.patch
 
 import sbt.GlobalLogging
 import sbt.State

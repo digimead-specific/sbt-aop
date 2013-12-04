@@ -39,7 +39,7 @@ case class Generic(
     // Heh, another feature not bug? SBT 0.12.3
     // MultiLogger and project level is debug, but ConsoleLogger is still info...
     // Don't care about CPU time
-    val globalLoggin = sbt.aspect.nested.patch.Patch.getGlobalLogging(state)
+    val globalLoggin = sbt.aspectj.nested.patch.Patch.getGlobalLogging(state)
     import globalLoggin._
     full match {
       case logger: AbstractLogger =>

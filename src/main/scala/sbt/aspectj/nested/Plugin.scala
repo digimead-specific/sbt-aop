@@ -59,7 +59,7 @@ object Plugin extends sbt.Plugin {
     aspectjSource <<= (sourceDirectory in Compile) / "aspectj",
     aspectjSourceLevel := "-1.6",
     aspectjVerbose := false,
-    aspectjVersion := "1.7.3",
+    aspectjVersion := "1.7.4",
     aspectjWeaveAgentJar <<= javaAgent,
     aspectjWeaveAgentOptions <<= javaAgentOptions,
     aspectjWeaveArg <<= aspectjWeaveArgTask,
