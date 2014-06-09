@@ -35,7 +35,7 @@ import sbt.aspectj.nested.argument.Weave
 //val aspectProducts = TaskKey[Seq[File]]("aspect-products", "Optionally compiled aspects (if produce-aspects).")
 
 object Keys {
-  def AspectJConf = config("aspectj") hide
+  def AspectJConf = config("aspectj").hide
 
   val aspectjAspects = TaskKey[Seq[Aspect]]("aspectjAspects", "All aspects, both source and binary.")
   val aspectjBinary = TaskKey[Seq[File]]("aspectjBinary", "Binary aspects passed to the -aspectpath AspectJ option.")
@@ -45,12 +45,12 @@ object Keys {
   val aspectjInputs = TaskKey[Seq[File]]("aspectjInputs", "The jars or classes directories to weave.")
   val aspectjInputResources = TaskKey[Seq[(File,File)]]("aspectjInputResources", "The list of project resources that are copied to weaved directories with respect to aspectjMappings.")
   val aspectjMappings = TaskKey[Seq[Mapping]]("aspectjMappings", "Mappings from inputs, through aspects, to outputs.")
-  val aspectjOptions = SettingKey[Seq[String]]("aspectjOptions", "The showWeaveInfo, verbose, and sourceLevel settings as options.")
+  val aspectjOptions = TaskKey[Seq[String]]("aspectjOptions", "The showWeaveInfo, verbose, and sourceLevel settings as options.")
   val aspectjOutput = SettingKey[File]("aspectjOutput", "Output directory for AspectJ instrumentation.")
   val aspectjOutxml = SettingKey[Boolean]("aspectjOutXML")
   val aspectjShowWeaveInfo = SettingKey[Boolean]("aspectjShowWeaveInfo", "Enable the -showWeaveInfo AspectJ option.")
   val aspectjSource = SettingKey[File]("aspectjSource", "Source directory for aspects.")
-  val aspectjSourceLevel = SettingKey[String]("aspectjSourceLevel", "The AspectJ source level option.")
+  val aspectjSourceLevel = TaskKey[Option[String]]("aspectjSourceLevel", "The AspectJ source level option.")
   val aspectjVerbose = SettingKey[Boolean]("aspectjVerbose", "Enable the -verbose AspectJ option.")
   val aspectjVersion = SettingKey[String]("aspectjVersion", "AspectJ version to use.")
   val aspectjWeave = TaskKey[Seq[File]]("aspectjWeave", "Weave with AspectJ.")
