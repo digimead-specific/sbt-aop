@@ -1,7 +1,7 @@
 /**
  * sbt-aspectj-nested - AspectJ for nested projects.
  *
- * Copyright (c) 2013 Alexey Aksenov ezh@ezh.msk.ru
+ * Copyright (c) 2013-2014 Alexey Aksenov ezh@ezh.msk.ru
  * Based on aspectj-sbt-plugin by Typesafe
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,25 +19,24 @@
 
 package sbt.aspectj.nested
 
-import Plugin.logPrefix
-import org.aspectj.bridge.{ AbortException, IMessage }
-import org.aspectj.bridge.{ IMessageHandler, MessageHandler }
-import org.aspectj.bridge.IMessage.{ ABORT, DEBUG, ERROR, FAIL, INFO, TASKTAG, WARNING, WEAVEINFO }
+import java.util.concurrent.Callable
+import org.aspectj.bridge._
+import org.aspectj.bridge.IMessage._
 import org.aspectj.tools.ajc.Main
 import sbt._
 import sbt.aspectj.nested.argument.{ Generic, Weave }
 import scala.language.reflectiveCalls
 
 object AspectJ {
-  def weave(weave: Weave)(implicit arg: Generic): Seq[File] = {
-    arg.log.info(logPrefix(arg.name) + "Weaving aspects")
+  def weave(weave: Weave)(implicit arg: Generic): Seq[File] = lock(weave.cache / "aspectj.lock") {
     val cacheDir = weave.cache / "aspectj"
-    arg.log.debug(logPrefix(arg.name) + "Search for cached aspects in " + cacheDir)
+    arg.log.debug(logPrefix(arg.name) + "Use cached aspects in " + cacheDir)
     val cached = FileFunction.cached(cacheDir / "ajc-inputs", FilesInfo.hash) { _ ⇒
+      arg.log.info(logPrefix(arg.name) + "Cache is not valid. Weaving aspects")
       val withPrevious = weave.mappings.zipWithIndex map { case (m, i) ⇒ (weave.mappings.take(i), m) }
       (withPrevious map {
         case (previousMappings, mapping) ⇒
-          val classpath = insertInstrumentedJars(weave.classpath, previousMappings)
+          val classpath = weave.classpath map { file ⇒ previousMappings.find(_.in == file).map(_.out).getOrElse(file) }
           val classpathOpts = Seq("-classpath", classpath.absString)
           val options = weave.options ++ classpathOpts
           ajcRun(mapping.in, mapping.aspects, mapping.out, options, cacheDir)
@@ -55,10 +54,6 @@ object AspectJ {
     cached(cacheInputs).toSeq
   }
 
-  def insertInstrumentedJars(classpath: Seq[File], mappings: Seq[Mapping]) = insertInstrumentedClasses(classpath, mappings)
-  def insertInstrumentedClasses(classpath: Seq[File], mappings: Seq[Mapping]) = {
-    classpath map { a ⇒ mappings.find(_.in == a).map(_.out).getOrElse(a) }
-  }
   protected def ajcOptions(in: File, aspects: Seq[Aspect], out: File, baseOptions: Seq[String]): Seq[String] = {
     val (binaries, sources) = aspects partition (_.binary)
     baseOptions ++
@@ -89,7 +84,7 @@ object AspectJ {
       ajcRunMain(options)
     }
   }
-  def ajcRunMain(options: Array[String])(implicit arg: Generic): Unit = {
+  protected def ajcRunMain(options: Array[String])(implicit arg: Generic): Unit = {
     arg.log.debug(logPrefix(arg.name) + "Running AspectJ compiler with:")
     arg.log.debug(logPrefix(arg.name) + "ajc " + options.mkString(" "))
     val ajc = new Main
@@ -120,4 +115,7 @@ object AspectJ {
     ajc.runMain(options, false)
     if (logger.errors) throw new AbortException(logPrefix(arg.name) + "AspectJ failed")
   }
+  protected def lock[T](file: File)(t: ⇒ T)(implicit arg: Generic): T =
+    arg.state.configuration.provider.scalaProvider.launcher.
+      globalLock.apply(file, new Callable[T] { def call = t })
 }

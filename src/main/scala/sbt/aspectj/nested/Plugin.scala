@@ -1,7 +1,7 @@
 /**
  * sbt-aspectj-nested - AspectJ for nested projects.
  *
- * Copyright (c) 2013 Alexey Aksenov ezh@ezh.msk.ru
+ * Copyright (c) 2013-2014 Alexey Aksenov ezh@ezh.msk.ru
  * Based on aspectj-sbt-plugin by Typesafe
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,27 +20,16 @@
 package sbt.aspectj.nested
 
 import Keys._
-import java.io.File
+import java.io.{ File, IOException }
 import sbt._
-import sbt.ConfigKey.configurationToKey
 import sbt.Keys._
-import sbt.Scoped._
 import sbt.aspectj.nested.argument.{ Generic, Weave }
 import scala.language.implicitConversions
 
 object Plugin extends sbt.Plugin {
   implicit def option2rich[T](option: Option[T]): RichOption[T] = new RichOption(option)
-  def logPrefix(name: String) = "[AspectJ nested:%s] ".format(name)
 
   lazy val defaultSettings = inConfig(AspectJConf)(Seq(
-    //aspectProducts <<= compileIfEnabled,
-    //compileAspects <<= compileAspectsTask,
-    //compiledClasses <<= compileClasses,
-    //dependencyClasspath <<= dependencyClasspath in Compile,
-    //managedClasspath <<= (configuration, classpathTypes, update) map Classpaths.managedJars,
-    //products in Compile <<= combineProducts,
-    //enableProducts := false,
-    //aspectjClassesDirectory <<= aspectjOutput / "classes",
     aspectjAspects <<= aspectsTask,
     aspectjBinary := Seq.empty,
     aspectjClasspath <<= (externalDependencyClasspath in Compile) map { _.files },
@@ -56,17 +45,15 @@ object Plugin extends sbt.Plugin {
     aspectjSource <<= (sourceDirectory in Compile) { _ / "aspectj" },
     aspectjSourceLevel <<= findSourceLevel,
     aspectjVerbose := false,
-    aspectjVersion := "1.8.0",
-    aspectjWeaveAgentJar <<= javaAgent,
-    aspectjWeaveAgentOptions <<= javaAgentOptions,
+    aspectjVersion := "1.8.2",
     aspectjWeaveArg <<= aspectjWeaveArgTask,
     copyResources <<= copyResourcesTask,
     excludeFilter := HiddenFileFilter,
     includeFilter := "*.aj",
+    products <<= weaveTask,
     sourceDirectories <<= Seq(aspectjSource).join,
-    sources <<= sourcesTask)) ++
-    // global settings
-    Seq(aspectjWeave <<= weaveTask)
+    sources <<= sourcesTask))
+
   /** AspectJ dependencies */
   def dependencySettings = Seq(
     ivyConfigurations += AspectJConf,
@@ -88,7 +75,7 @@ object Plugin extends sbt.Plugin {
 
   /** Collect mappings from available aspects and filters */
   def aspectMappingsTask = (aspectjInputs, aspectjAspects, aspectjFilter, aspectjOutput) map ((in, aspects, filter, dir) ⇒
-    in map { input ⇒ Mapping(input, filter(input, aspects), instrumented(input, dir)) })
+    in map { input ⇒ Mapping(input, filter(input, aspects), getInstrumentedPath(input, dir)) })
   /** Collect all available aspects */
   def aspectsTask = (sources, aspectjBinary) map ((s, b) ⇒
     (s map { Aspect(_, binary = false) }) ++ (b map { Aspect(_, binary = true) }))
@@ -104,6 +91,31 @@ object Plugin extends sbt.Plugin {
     (if (info) Seq("-showWeaveInfo") else Seq.empty[String]) ++
       (if (verbose) Seq("-verbose") else Seq.empty[String]) ++
       level.toSeq
+  }
+  def copyResourcesTask = (aspectjMappings in AJConf, aspectjInputResources in AJConf, state, thisProjectRef, streams) map {
+    (mappings, aspectjInputResources, state, thisProjectRef, streams) ⇒
+      val arg = Generic(state, thisProjectRef, Some(streams))
+      arg.log.debug(logPrefix(arg.name) + "Copy resources.")
+      val cacheFile = streams.cacheDirectory / "aspectj" / "resource-sync"
+      // list of resoirce tuples (old file location -> instrumented file location) per aspectjMappings
+      val mapped = mappings flatMap { mapping ⇒
+        if (mapping.in.isDirectory) {
+          /*
+           * rebase resource(_._2)
+           *   from mapping.in (.../abc/def/target/scala-2.10/test-classes/...)
+           *   to mapping.out (.../target/scala-2.10/aspectj/test-classes-instrumented/...)
+           * returns None if aspectjInputResources entry is "foreign" resource,
+           *  without relation to current mapping
+           */
+          val result = aspectjInputResources map (_._2) pair (rebase(mapping.in, mapping.out), false)
+          result.map {
+            case (from, to) ⇒ arg.log.debug(logPrefix(arg.name) + "Copy resource %s for mapping '%s'.".format(from, mapping.in.name))
+          }
+          result
+        } else Seq.empty
+      }
+      sync(cacheFile)(mapped)
+      mapped
   }
   /** Find source level for aspect4j. */
   def findSourceLevel = (javacOptions, aspectjGenericArg in AspectJConf) map { (javacOptions, aspectjGenericArg) ⇒
@@ -138,7 +150,8 @@ object Plugin extends sbt.Plugin {
     AspectJ.weave(aspectjWeaveArg)(aspectjGenericArg)
   }
 
-  def instrumented(input: File, outputDir: File): File = {
+  /** Get path to instrumented artifact. */
+  protected def getInstrumentedPath(input: File, outputDir: File): File = {
     val (base, ext) = input.baseAndExt
     val outputName = {
       if (ext.isEmpty) base + "-instrumented"
@@ -146,87 +159,49 @@ object Plugin extends sbt.Plugin {
     }
     outputDir / outputName
   }
+  /**
+   * Fixed sbt.Sync.apply
+   * https://github.com/sbt/sbt/issues/1559
+   */
+  protected def sync(cacheFile: File, inStyle: FileInfo.Style = FileInfo.lastModified, outStyle: FileInfo.Style = FileInfo.exists): Traversable[(File, File)] ⇒ Relation[File, File] =
+    mappings ⇒
+      {
+        val relation = Relation.empty ++ mappings
+        Sync.noDuplicateTargets(relation)
+        val currentInfo = relation._1s.map(s ⇒ (s, inStyle(s))).toMap
 
-  def copyResourcesTask = (aspectjMappings in AJConf, aspectjInputResources in AJConf, state, thisProjectRef, streams) map {
-    (mappings, aspectjInputResources, state, thisProjectRef, streams) ⇒
-      val arg = Generic(state, thisProjectRef, Some(streams))
-      arg.log.debug(logPrefix(arg.name) + "Copy resources.")
-      val cacheFile = streams.cacheDirectory / "aspectj" / "resource-sync"
-      // list of resoirce tuples (old file location -> instrumented file location) per aspectjMappings
-      val mapped = mappings flatMap { mapping ⇒
-        if (mapping.in.isDirectory) {
-          /*
-           * rebase resource(_._2)
-           *   from mapping.in (.../abc/def/target/scala-2.10/test-classes/...)
-           *   to mapping.out (.../target/scala-2.10/aspectj/test-classes-instrumented/...)
-           * returns None if aspectjInputResources entry is "foreign" resource,
-           *  without relation to current mapping
-           */
-          val result = aspectjInputResources map (_._2) pair (rebase(mapping.in, mapping.out), false)
-          result.map {
-            case (from, to) ⇒ arg.log.debug(logPrefix(arg.name) + "Copy resource %s for mapping '%s'.".format(from, mapping.in.name))
-          }
-          result
-        } else Seq.empty
+        val (previousRelation, previousInfo) = readInfo(cacheFile)(inStyle.format)
+        val removeTargets = previousRelation._2s -- relation._2s
+
+        def outofdate(source: File, target: File): Boolean =
+          !previousRelation.contains(source, target) ||
+            (previousInfo get source) != (currentInfo get source) ||
+            !target.exists ||
+            target.isDirectory != source.isDirectory
+
+        val updates = relation filter outofdate
+
+        val (cleanDirs, cleanFiles) = (updates._2s ++ removeTargets).partition(_.isDirectory)
+
+        IO.delete(cleanFiles)
+        IO.deleteIfEmpty(cleanDirs)
+        updates.all.foreach((Sync.copy _).tupled)
+
+        Sync.writeInfo(cacheFile, relation, currentInfo)(inStyle.format)
+        relation
       }
-      Sync(cacheFile)(mapped)
-      mapped
-  }
-
-  def useInstrumentedJars(config: Configuration) =
-    useInstrumentedClasses(config)
-  def useInstrumentedClasses(config: Configuration) =
-    (sbt.Keys.fullClasspath in config, aspectjMappings in AspectJConf, aspectjWeave in AspectJConf) map (
-      (cp, mappings, woven) ⇒ AspectJ.insertInstrumentedClasses(cp.files, mappings))
-
-  def ajcCompileOptions(aspects: Seq[File], outxml: Boolean, classpath: Seq[File], baseOptions: Seq[String], output: File): Seq[String] = {
-    baseOptions ++
-      Seq("-XterminateAfterCompilation") ++
-      Seq("-classpath", classpath.absString) ++
-      Seq("-d", output.absolutePath) ++
-      (if (outxml) Seq("-outxml") else Seq.empty[String]) ++
-      aspects.map(_.absolutePath)
-  }
-
-  def javaAgent = update map { report ⇒
-    report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")).headOption
-  }
-
-  def javaAgentOptions = aspectjWeaveAgentJar map { weaver ⇒ weaver.toSeq map { "-javaagent:" + _ } }
+  /**
+   * Fixed sbt.Sync.readInfo
+   * https://github.com/sbt/sbt/issues/1559
+   */
+  protected def readInfo[F <: FileInfo](file: File)(implicit infoFormat: sbinary.Format[F]): Sync.RelationInfo[F] =
+    try { Sync.readUncaught(file)(infoFormat) }
+    catch {
+      case e: IOException ⇒ (Relation.empty, Map.empty)
+      case e: TranslatedIOException ⇒ (Relation.empty, Map.empty)
+    }
 
   class RichOption[T](option: Option[T]) {
     def getOrThrow(onError: String) = option getOrElse { throw new NoSuchElementException(onError) }
   }
-
-  /*
-   * Load time weaving
-   */
-
-  //def compileClasses = (compile in Compile, compileInputs in Compile) map {
-  //  (_, inputs) => inputs.config.classesDirectory
-  //}
-
-  //def combineClasspaths = (managedClasspath, dependencyClasspath, compiledClasses) map {
-  //  (mcp, dcp, classes) => Attributed.blank(classes) +: (mcp ++ dcp)
-  //}
-  /*def compileAspectsTask = (sources, aspectjOutxml, aspectjClasspath, aspectjOptions, aspectjClassesDirectory, cacheDirectory, name, streams, state, streams, thisProjectRef) map {
-    (aspects, outxml, classpath, opts, dir, cacheDir, name, s, state, streams, thisProjectRef) =>
-      implicit val arg = Generic(state, thisProjectRef, Some(streams))
-      val cachedCompile = FileFunction.cached(cacheDir / "ajc-compile", FilesInfo.hash) { _ =>
-        val sourceCount = Util.counted("AspectJ source", "", "s", aspects.length)
-        sourceCount foreach { count => s.log.info("Compiling %s to %s..." format (count, dir)) }
-        val options = ajcCompileOptions(aspects, outxml, classpath, opts, dir).toArray
-        AspectJ.ajcRunMain(options)
-        dir.***.get.toSet
-      }
-      val inputs = aspects.toSet
-      cachedCompile(inputs)
-      dir
-  }*/
-  //def compileIfEnabled = (enableProducts, compileAspects.task) flatMap {
-  //  (enable, compile) => if (enable) (compile map { dir => Seq(dir) }) else task { Seq.empty[File] }
-  //}
-
-  //def combineProducts = (products in Compile, aspectProducts) map { _ ++ _ }
-
 }

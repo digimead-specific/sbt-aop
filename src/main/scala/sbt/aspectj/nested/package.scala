@@ -1,7 +1,7 @@
 /**
  * sbt-aspectj-nested - AspectJ for nested projects.
  *
- * Copyright (c) 2013 Alexey Aksenov ezh@ezh.msk.ru
+ * Copyright (c) 2013-2014 Alexey Aksenov ezh@ezh.msk.ru
  * Based on aspectj-sbt-plugin by Typesafe
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,24 +19,21 @@
 
 package sbt.aspectj
 
+import java.io.File
+
 package object nested {
-  /** Entry point for the plugin in user's project */
+  /** Entry point for the plugin in user's project. */
   def AspectJNested = Plugin.defaultSettings ++ Plugin.dependencySettings
-  /** Entry point for the plugin in user's project with RT dependency */
+  /** Entry point for the plugin in user's project with RT dependency. */
   def AspectJNestedRT = Plugin.defaultSettings ++ Plugin.dependencySettingsRT
 
   // export declarations for end user
   lazy val AJKey = Keys
   lazy val AJConf = Keys.AspectJConf
 
-  // public keys
-  def aspectjBinary = Keys.aspectjBinary
-  def aspectjClasspath = Keys.aspectjClasspath
-  def aspectjFilter = Keys.aspectjFilter
-  def aspectjGenericArg = Keys.aspectjGenericArg
-  def aspectjInputs = Keys.aspectjInputs
-  def aspectjSource = Keys.aspectjSource
-  def aspectjVersion = Keys.aspectjVersion
-  def aspectjWeave = Keys.aspectjWeave
-  def aspectjWeaveArg = Keys.aspectjWeaveArg
+  /** Add to log message AspectJ prefix. */
+  protected[nested] def logPrefix(name: String) = "[AspectJ nested:%s] ".format(name)
+
+  case class Aspect(file: File, binary: Boolean)
+  case class Mapping(in: File, aspects: Seq[Aspect], out: File)
 }

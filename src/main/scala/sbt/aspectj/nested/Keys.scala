@@ -1,7 +1,7 @@
 /**
  * sbt-aspectj-nested - AspectJ for nested projects.
  *
- * Copyright (c) 2013 Alexey Aksenov ezh@ezh.msk.ru
+ * Copyright (c) 2013-2014 Alexey Aksenov ezh@ezh.msk.ru
  * Based on aspectj-sbt-plugin by Typesafe
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,6 @@ import sbt.aspectj.nested.argument.Weave
 // -> inputRules
 // load-time weaving support - compiling and including aspects in package-bin
 //val compileAspects = TaskKey[File]("compile-aspects", "Compile aspects for load-time weaving.")
-//val enableProducts = TaskKey[Boolean]("enableProducts", "Enable or disable compiled aspects in compile products.")
-//val aspectProducts = TaskKey[Seq[File]]("aspect-products", "Optionally compiled aspects (if produce-aspects).")
 
 object Keys {
   def AspectJConf = config("aspectj").hide
@@ -53,8 +51,5 @@ object Keys {
   val aspectjSourceLevel = TaskKey[Option[String]]("aspectjSourceLevel", "The AspectJ source level option.")
   val aspectjVerbose = SettingKey[Boolean]("aspectjVerbose", "Enable the -verbose AspectJ option.")
   val aspectjVersion = SettingKey[String]("aspectjVersion", "AspectJ version to use.")
-  val aspectjWeave = TaskKey[Seq[File]]("aspectjWeave", "Weave with AspectJ.")
-  val aspectjWeaveAgentJar = TaskKey[Option[File]]("aspectjWeaveAgentJar", "Location of AspectJ weaver.")
-  val aspectjWeaveAgentOptions = TaskKey[Seq[String]]("aspectjWeaveAgentOptions", "JVM options for AspectJ java agent.")
   val aspectjWeaveArg = TaskKey[Weave]("aspectjWeaveArguments", "Project settings for weave task.")
 }
