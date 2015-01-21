@@ -45,7 +45,7 @@ object Plugin extends sbt.Plugin {
     aspectjSource <<= (sourceDirectory in Compile) { _ / "aspectj" },
     aspectjSourceLevel <<= findSourceLevel,
     aspectjVerbose := false,
-    aspectjVersion := "1.8.2",
+    aspectjVersion := "1.8.4",
     aspectjWeaveArg <<= aspectjWeaveArgTask,
     copyResources <<= copyResourcesTask,
     excludeFilter := HiddenFileFilter,
