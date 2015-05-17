@@ -1,7 +1,7 @@
 /**
  * sbt-aspectj-nested - AspectJ for nested projects.
  *
- * Copyright (c) 2013-2014 Alexey Aksenov ezh@ezh.msk.ru
+ * Copyright (c) 2013-2015 Alexey Aksenov ezh@ezh.msk.ru
  * Based on aspectj-sbt-plugin by Typesafe
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,7 @@ object Plugin extends sbt.Plugin {
     aspectjSource <<= (sourceDirectory in Compile) { _ / "aspectj" },
     aspectjSourceLevel <<= findSourceLevel,
     aspectjVerbose := false,
-    aspectjVersion := "1.8.4",
+    aspectjVersion := "1.8.5",
     aspectjWeaveArg <<= aspectjWeaveArgTask,
     copyResources <<= copyResourcesTask,
     excludeFilter := HiddenFileFilter,

@@ -21,7 +21,7 @@ name := "sbt-aspectj-nested"
 
 version <<= (baseDirectory) { (b) => scala.io.Source.fromFile(b / "version").mkString.trim }
 
-libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.4"
+libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.5"
 
 ScriptedPlugin.scriptedSettings
 
