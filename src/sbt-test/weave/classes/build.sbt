@@ -1,6 +1,6 @@
-import sbt.aspectj.nested._
+import sbt.aop._
 
-AspectJNestedRT
+AOPRT
 
 name := "Simple"
 
@@ -11,8 +11,6 @@ scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xcheckinit")
 logLevel := Level.Debug
 
 
-AJKey.aspectjInputs in AJConf <<= (classDirectory in Compile) map (x => Seq(x))
-
-products in Compile <<= products in AJConf
+AOPKey.aopInputs in AOPConf <<= (classDirectory in Compile) map (x => Seq(x))
 
 products in Runtime <<= products in Compile

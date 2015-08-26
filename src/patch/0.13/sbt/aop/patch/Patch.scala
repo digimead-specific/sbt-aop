@@ -1,8 +1,7 @@
 /**
- * sbt-aspectj-nested - AspectJ for nested projects.
+ * sbt-aop - AspectJ for nested projects.
  *
  * Copyright (c) 2013 Alexey Aksenov ezh@ezh.msk.ru
- * Based on aspectj-sbt-plugin by Typesafe
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +16,14 @@
  * limitations under the License.
  */
 
-package sbt.aspectj.nested.argument
+package sbt.aop.patch
 
-import java.io.File
+import sbt.GlobalLogging
+import sbt.State
 
-import sbt.aspectj.nested.Mapping
-
-case class Weave(
-  /** Directory used for caching task data (cacheDirectory). */
-  val cache: File,
-  /** Mappings from inputs, through aspects, to outputs (aspectjMappings). */
-  val mappings: Seq[Mapping],
-  /** The showWeaveInfo, verbose, and sourceLevel settings as options (aspectjOptions). */
-  val options: Seq[String],
-  /** The classpath used for running AspectJ (aspectjClasspath). */
-  val classpath: Seq[File])
+/**
+ * SBT 0.13 specific code
+ */
+object Patch {
+  def getGlobalLogging(state: State): GlobalLogging = state.globalLogging
+}

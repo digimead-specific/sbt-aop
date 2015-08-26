@@ -1,8 +1,7 @@
 /**
- * sbt-aspectj-nested - AspectJ for nested projects.
+ * sbt-aop - AspectJ for nested projects.
  *
  * Copyright (c) 2013 Alexey Aksenov ezh@ezh.msk.ru
- * Based on aspectj-sbt-plugin by Typesafe
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +16,21 @@
  * limitations under the License.
  */
 
-package sbt.aspectj.nested.argument
+package sbt.aop.argument
 
 import sbt._
 import sbt.Keys._
-import sbt.aspectj.nested.Keys.AspectJConf
+import sbt.aop.Keys.AOPConf
 
 /** Consolidated argument with all required information */
 case class Generic(
-  /** The data structure representing all command execution information. */
-  state: State,
-  // It is more reasonable to pass it from SBT than of fetch it directly.
-  /** The reference to the current project. */
-  thisProjectRef: ProjectRef,
-  /** The structure that contains reference to log facilities. */
-  streams: Option[sbt.std.TaskStreams[ScopedKey[_]]] = None) {
+    /** The data structure representing all command execution information. */
+    state: State,
+    // It is more reasonable to pass it from SBT than of fetch it directly.
+    /** The reference to the current project. */
+    thisProjectRef: ProjectRef,
+    /** The structure that contains reference to log facilities. */
+    streams: Option[sbt.std.TaskStreams[ScopedKey[_]]] = None) {
   /** Extracted state projection */
   lazy val extracted = Project.extract(state)
   /** SBT logger */
@@ -39,14 +38,14 @@ case class Generic(
     // Heh, another feature not bug? SBT 0.12.3
     // MultiLogger and project level is debug, but ConsoleLogger is still info...
     // Don't care about CPU time
-    val globalLoggin = sbt.aspectj.nested.patch.Patch.getGlobalLogging(state)
+    val globalLoggin = sbt.aop.patch.Patch.getGlobalLogging(state)
     import globalLoggin._
     full match {
-      case logger: AbstractLogger =>
+      case logger: AbstractLogger ⇒
         val level = logLevel in thisScope get extracted.structure.data
         level.foreach(logger.setLevel(_)) // force level
         logger
-      case logger =>
+      case logger ⇒
         logger
     }
   }
@@ -55,5 +54,5 @@ case class Generic(
   /** Scope of current project */
   lazy val thisScope = Load.projectScope(thisProjectRef)
   /** Scope of current project withing plugin configuration */
-  lazy val thisOSGiScope = thisScope.copy(config = Select(AspectJConf))
+  lazy val thisOSGiScope = thisScope.copy(config = Select(AOPConf))
 }

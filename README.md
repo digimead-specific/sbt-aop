@@ -1,9 +1,9 @@
-SBT AspectJ Nested [![Build Status](https://travis-ci.org/digimead-specific/sbt-aspectj-nested.png)](https://travis-ci.org/digimead-specific/sbt-aspectj-nested)
+SBT AOP [![Build Status](https://travis-ci.org/digimead-specific/sbt-aop.png)](https://travis-ci.org/digimead-specific/sbt-aop)
 ==================
 
 AspectJ for hierarchical projects.
 
-[See SBT AspectJ Nested documentation](http://digimead-specific.github.io/sbt-aspectj-nested/).
+[See SBT AOP documentation](http://digimead-specific.github.io/sbt-aop/).
 
 __Required Java 6 or higher__
 
@@ -16,10 +16,12 @@ Authors
 License
 -------
 
-SBT Dependency Manager is licensed to you under the terms of
+SBT AOP is licensed to you under the terms of
 the Apache License, version 2.0, a copy of which has been
 included in the LICENSE file.
 Please check the individual source files for details.
+
+Based on aspectj-sbt-plugin by Typesafe.
 
 Copyright
 ---------

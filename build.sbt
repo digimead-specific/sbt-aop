@@ -17,11 +17,11 @@ sbtPlugin := true
 
 organization := "org.digimead"
 
-name := "sbt-aspectj-nested"
+name := "sbt-aop"
 
 version <<= (baseDirectory) { (b) => scala.io.Source.fromFile(b / "version").mkString.trim }
 
-libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.5"
+libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.6"
 
 ScriptedPlugin.scriptedSettings
 

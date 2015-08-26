@@ -1,6 +1,6 @@
-import sbt.aspectj.nested._
+import sbt.aop._
 
-AspectJNestedRT
+AOPRT
 
 name := "Simple"
 
@@ -13,8 +13,8 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.1.2"
 logLevel := Level.Debug
 
 
-AJKey.aspectjInputs in AJConf <<= update map { report =>
+AOPKey.aopInputs in AOPConf <<= update map { report =>
   report.matching(moduleFilter(organization = "com.typesafe.akka", name = "akka-actor*"))
 }
 
-fullClasspath in Runtime <<= (products in AJConf, fullClasspath in Runtime) map { (a,b) => a.map(Attributed.blank) ++ b }
+fullClasspath in Runtime <<= (products in Compile, fullClasspath in Runtime) map { (a,b) => a.map(Attributed.blank) ++ b }

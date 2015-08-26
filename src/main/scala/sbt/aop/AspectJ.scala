@@ -1,8 +1,7 @@
 /**
- * sbt-aspectj-nested - AspectJ for nested projects.
+ * sbt-aop - AspectJ for nested projects.
  *
- * Copyright (c) 2013-2014 Alexey Aksenov ezh@ezh.msk.ru
- * Based on aspectj-sbt-plugin by Typesafe
+ * Copyright (c) 2013-2015 Alexey Aksenov ezh@ezh.msk.ru
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,23 +16,27 @@
  * limitations under the License.
  */
 
-package sbt.aspectj.nested
+package sbt.aop
 
 import java.util.concurrent.Callable
-import org.aspectj.bridge._
 import org.aspectj.bridge.IMessage._
+import org.aspectj.bridge._
 import org.aspectj.tools.ajc.Main
 import sbt._
-import sbt.aspectj.nested.argument.{ Generic, Weave }
+import sbt.aop.argument.{ Generic, Weave }
+import sbt.std.TaskStreams
 import scala.language.reflectiveCalls
 
 object AspectJ {
-  def weave(weave: Weave)(implicit arg: Generic): Seq[File] = lock(weave.cache / "aspectj.lock") {
-    val cacheDir = weave.cache / "aspectj"
-    arg.log.debug(logPrefix(arg.name) + "Use cached aspects in " + cacheDir)
+  def weave(weave: Weave, products: Seq[File])(implicit arg: Generic): Seq[File] = lock(weave.cache / "aop.lock") {
+    Plugin.copyResources(weave)
+    val cacheDir = weave.cache / "aop"
+    val mappings = weave.mappings.filter(mapping ⇒ mapping.in.isFile() || (mapping.in.exists() && mapping.in.listFiles().nonEmpty))
+    @volatile var valid = true
     val cached = FileFunction.cached(cacheDir / "ajc-inputs", FilesInfo.hash) { _ ⇒
+      valid = false
       arg.log.info(logPrefix(arg.name) + "Cache is not valid. Weaving aspects")
-      val withPrevious = weave.mappings.zipWithIndex map { case (m, i) ⇒ (weave.mappings.take(i), m) }
+      val withPrevious = mappings.zipWithIndex map { case (m, i) ⇒ (mappings.take(i), m) }
       (withPrevious map {
         case (previousMappings, mapping) ⇒
           val classpath = weave.classpath map { file ⇒ previousMappings.find(_.in == file).map(_.out).getOrElse(file) }
@@ -43,7 +46,9 @@ object AspectJ {
           mapping.out
       }).toSet
     }
-    val cacheInputs = weave.mappings.flatMap(mapping ⇒ {
+    if (valid)
+      arg.log.debug(logPrefix(arg.name) + "Use cached aspects in " + cacheDir)
+    val cacheInputs = mappings.flatMap(mapping ⇒ {
       val input = mapping.in
       val aspects = mapping.aspects.map(_.file)
       if (input.isDirectory)
@@ -51,7 +56,12 @@ object AspectJ {
       else
         input +: aspects
     }).toSet
-    cached(cacheInputs).toSeq
+    val output = cached(cacheInputs).toSeq
+    if (output.isEmpty) {
+      arg.log.debug(logPrefix(arg.name) + "There are no weaved code. Return original products")
+      products
+    } else
+      output
   }
 
   protected def ajcOptions(in: File, aspects: Seq[Aspect], out: File, baseOptions: Seq[String]): Seq[String] = {

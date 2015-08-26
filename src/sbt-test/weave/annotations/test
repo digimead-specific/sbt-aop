@@ -1,1 +1,24 @@
 > check
+> clean
+-$ exists target/scala-2.10/aop/classes-instrumented/sample/Sample$.class
+-$ exists target/scala-2.10/aop/classes-instrumented/main-res.txt
+-$ exists target/scala-2.10/aop/test-classes-instrumented/sample/SampleSpec.class
+-$ exists target/scala-2.10/aop/test-classes-instrumented/test-res.txt
+> test
+$ exists target/scala-2.10/aop/classes-instrumented/sample/Sample$.class
+$ exists target/scala-2.10/aop/classes-instrumented/main-res.txt
+$ exists target/scala-2.10/aop/test-classes-instrumented/sample/SampleSpec.class
+$ exists target/scala-2.10/aop/test-classes-instrumented/test-res.txt
+> clean
+-$ exists target/scala-2.10/aop/classes-instrumented/sample/Sample$.class
+-$ exists target/scala-2.10/aop/classes-instrumented/main-res.txt
+-$ exists target/scala-2.10/aop/test-classes-instrumented/sample/SampleSpec.class
+-$ exists target/scala-2.10/aop/test-classes-instrumented/test-res.txt
+> set sbt.aop.AOPKey.aopInputs in sbt.aop.AOPConf := Seq.empty
+> show test:products
+> show products
+-> test
+-$ exists target/scala-2.10/aop/classes-instrumented/sample/Sample$.class
+-$ exists target/scala-2.10/aop/classes-instrumented/main-res.txt
+-$ exists target/scala-2.10/aop/test-classes-instrumented/sample/SampleSpec.class
+-$ exists target/scala-2.10/aop/test-classes-instrumented/test-res.txt

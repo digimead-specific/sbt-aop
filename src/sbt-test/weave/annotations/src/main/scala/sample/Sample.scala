@@ -7,4 +7,6 @@ class Sample {
 object Sample extends App {
   val sample = new Sample
   sample.printSample()
+
+  def add(a: Int, b: Int) = a + b
 }
