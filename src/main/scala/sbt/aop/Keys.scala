@@ -25,7 +25,8 @@ import sbt.aop.argument.Generic
 import sbt.aop.argument.Weave
 
 object Keys {
-  def AOPConf = config("aop").hide
+  def AOPCompileConf = config("aopCompile").hide
+  def AOPTestConf = config("aopTest").hide
 
   val aopAspects = TaskKey[Seq[Aspect]]("aopAspects", "All aspects, both source and binary.")
   val aopBinary = TaskKey[Seq[File]]("aopBinary", "Binary aspects passed to the -aspectpath AspectJ option.")

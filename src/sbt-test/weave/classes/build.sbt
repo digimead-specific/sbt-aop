@@ -11,6 +11,6 @@ scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xcheckinit")
 logLevel := Level.Debug
 
 
-AOPKey.aopInputs in AOPConf <<= (classDirectory in Compile) map (x => Seq(x))
+AOPKey.aopInputs in AOPCompile <<= (classDirectory in Compile) map (x => Seq(x))
 
 products in Runtime <<= products in Compile

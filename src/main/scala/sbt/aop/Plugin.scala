@@ -28,13 +28,18 @@ import scala.language.implicitConversions
 object Plugin extends sbt.Plugin {
   implicit def option2rich[T](option: Option[T]): RichOption[T] = new RichOption(option)
 
-  lazy val defaultSettings = inConfig(AOPConf)(Seq(
+  lazy val defaultCompileSettings = inConfig(AOPCompileConf)(Seq(
     aopAspects <<= aspectsTask,
     aopBinary := Seq.empty,
+    aopClasspath <<= (externalDependencyClasspath in Compile, classDirectory in Compile) map { (a, b) ⇒ a.files :+ b },
     aopFilter := { (f, a) ⇒ a },
     aopGenericArg <<= (state, streams, thisProjectRef) map (
       (state, streams, thisProjectRef) ⇒ Generic(state, thisProjectRef, Some(streams))),
     aopInputs := Seq.empty,
+    // copyResources will drop foreign input resources
+    aopInputResources <<= sbt.Keys.copyResources in Compile,
+    aopMappings <<= (aopInputs, aopAspects, aopFilter, aopOutput) map ((in, aspects, filter, dir) ⇒
+      in map { input ⇒ Mapping(input, filter(input, aspects), Plugin.getInstrumentedPath(input, dir)) }),
     aopOptions <<= baseOptionsSettings,
     aopOutput <<= (crossTarget) { _ / "aop" },
     aopOutxml := true,
@@ -42,6 +47,38 @@ object Plugin extends sbt.Plugin {
     aopSource <<= (sourceDirectory in Compile) { _ / "aop" },
     aopSourceLevel <<= findSourceLevel,
     aopVerbose := false,
+    aopWeaveArg <<= (aopOptions, aopClasspath, aopMappings, aopInputResources, streams) map
+      ((aspectjOptions, aspectjClasspath, aspectjMappings, aspectjInputResources, streams) ⇒
+        Weave(streams.cacheDirectory, aspectjClasspath, aspectjMappings, aspectjOptions, aspectjInputResources)),
+    aspectjVersion := AspectJVersion,
+    excludeFilter := HiddenFileFilter,
+    includeFilter := "*.aj",
+    sourceDirectories <<= Seq(aopSource).join,
+    sources <<= sourcesTask))
+
+  lazy val defaultTestSettings = inConfig(AOPTestConf)(Seq(
+    aopAspects <<= aspectsTask,
+    aopBinary := Seq.empty,
+    aopClasspath <<= (externalDependencyClasspath in Compile, externalDependencyClasspath in Test,
+      classDirectory in Compile, classDirectory in Test) map { (a, b, c, d) ⇒ (a ++ b).files :+ c :+ d },
+    aopFilter := { (f, a) ⇒ a },
+    aopGenericArg <<= (state, streams, thisProjectRef) map (
+      (state, streams, thisProjectRef) ⇒ Generic(state, thisProjectRef, Some(streams))),
+    aopInputs := Seq.empty,
+    // copyResources will drop foreign input resources
+    aopInputResources <<= (sbt.Keys.copyResources in Compile, sbt.Keys.copyResources in Test) map { (a, b) ⇒ a ++ b },
+    aopMappings <<= (aopInputs, aopAspects, aopFilter, aopOutput) map ((in, aspects, filter, dir) ⇒
+      in map { input ⇒ Mapping(input, filter(input, aspects), Plugin.getInstrumentedPath(input, dir)) }),
+    aopOptions <<= baseOptionsSettings,
+    aopOutput <<= (crossTarget) { _ / "aop" },
+    aopOutxml := true,
+    aopShowWeaveInfo := false,
+    aopSource <<= (sourceDirectory in Compile) { _ / "aop" },
+    aopSourceLevel <<= findSourceLevel,
+    aopVerbose := false,
+    aopWeaveArg <<= (aopOptions, aopClasspath, aopMappings, aopInputResources, streams) map
+      ((aspectjOptions, aspectjClasspath, aspectjMappings, aspectjInputResources, streams) ⇒
+        Weave(streams.cacheDirectory, aspectjClasspath, aspectjMappings, aspectjOptions, aspectjInputResources)),
     aspectjVersion := AspectJVersion,
     excludeFilter := HiddenFileFilter,
     includeFilter := "*.aj",
@@ -50,20 +87,20 @@ object Plugin extends sbt.Plugin {
 
   /** AspectJ dependencies */
   def dependencySettings = Seq(
-    ivyConfigurations += AOPConf,
-    libraryDependencies <++= (aspectjVersion in AOPConf) { version ⇒
+    ivyConfigurations ++= Seq(AOPCompileConf, AOPTestConf),
+    libraryDependencies <++= (aspectjVersion in AOPCompileConf) { version ⇒
       Seq(
-        "org.aspectj" % "aspectjtools" % version % AOPConf.name,
-        "org.aspectj" % "aspectjweaver" % version % AOPConf.name,
-        "org.aspectj" % "aspectjrt" % version % AOPConf.name)
+        "org.aspectj" % "aspectjtools" % version % AOPCompileConf.name,
+        "org.aspectj" % "aspectjweaver" % version % AOPCompileConf.name,
+        "org.aspectj" % "aspectjrt" % version % AOPCompileConf.name)
     })
   /** AspectJ dependencies with public AspectJRT dependency */
   def dependencySettingsRT = Seq(
-    ivyConfigurations += AOPConf,
-    libraryDependencies <++= (aspectjVersion in AOPConf) { version ⇒
+    ivyConfigurations ++= Seq(AOPCompileConf, AOPTestConf),
+    libraryDependencies <++= (aspectjVersion in AOPCompileConf) { version ⇒
       Seq(
-        "org.aspectj" % "aspectjtools" % version % AOPConf.name,
-        "org.aspectj" % "aspectjweaver" % version % AOPConf.name,
+        "org.aspectj" % "aspectjtools" % version % AOPCompileConf.name,
+        "org.aspectj" % "aspectjweaver" % version % AOPCompileConf.name,
         "org.aspectj" % "aspectjrt" % version)
     })
 
@@ -100,7 +137,7 @@ object Plugin extends sbt.Plugin {
     mapped
   }
   /** Find source level for aspect4j. */
-  def findSourceLevel = (javacOptions, aopGenericArg in AOPConf) map { (javacOptions, aspectjGenericArg) ⇒
+  def findSourceLevel = (javacOptions, aopGenericArg) map { (javacOptions, aspectjGenericArg) ⇒
     def default = System.getProperty("java.runtime.version") match {
       case version if version startsWith "1.8" ⇒ Some("-1.8")
       case version if version startsWith "1.7" ⇒ Some("-1.7")

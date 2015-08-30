@@ -20,7 +20,6 @@ package sbt.aop.argument
 
 import sbt._
 import sbt.Keys._
-import sbt.aop.Keys.AOPConf
 
 /** Consolidated argument with all required information */
 case class Generic(
@@ -53,6 +52,4 @@ case class Generic(
   val name: String = (sbt.Keys.name in thisScope get extracted.structure.data) getOrElse thisProjectRef.project.toString()
   /** Scope of current project */
   lazy val thisScope = Load.projectScope(thisProjectRef)
-  /** Scope of current project withing plugin configuration */
-  lazy val thisOSGiScope = thisScope.copy(config = Select(AOPConf))
 }

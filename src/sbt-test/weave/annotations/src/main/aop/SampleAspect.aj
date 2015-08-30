@@ -2,6 +2,7 @@ package sample;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.*;
+import sample.test;
 
 @Aspect
 public class SampleAspect {

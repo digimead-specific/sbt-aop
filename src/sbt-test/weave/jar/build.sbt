@@ -13,7 +13,7 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.1.2"
 logLevel := Level.Debug
 
 
-AOPKey.aopInputs in AOPConf <<= update map { report =>
+AOPKey.aopInputs in AOPCompile <<= update map { report =>
   report.matching(moduleFilter(organization = "com.typesafe.akka", name = "akka-actor*"))
 }
 

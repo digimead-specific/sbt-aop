@@ -14,7 +14,8 @@ $ exists target/scala-2.10/aop/test-classes-instrumented/test-res.txt
 -$ exists target/scala-2.10/aop/classes-instrumented/main-res.txt
 -$ exists target/scala-2.10/aop/test-classes-instrumented/sample/SampleSpec.class
 -$ exists target/scala-2.10/aop/test-classes-instrumented/test-res.txt
-> set sbt.aop.AOPKey.aopInputs in sbt.aop.AOPConf := Seq.empty
+> set sbt.aop.AOPKey.aopInputs in sbt.aop.AOPCompile := Seq.empty
+> set sbt.aop.AOPKey.aopInputs in sbt.aop.AOPTest := Seq.empty
 > show test:products
 > show products
 -> test
