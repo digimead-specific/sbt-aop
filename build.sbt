@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2013-2015 Alexey Aksenov ezh@ezh.msk.ru
+// Copyright (c) 2013-2016 Alexey Aksenov ezh@ezh.msk.ru
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ name := "sbt-aop"
 
 version <<= (baseDirectory) { (b) => scala.io.Source.fromFile(b / "version").mkString.trim }
 
-libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.6"
+libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.8"
 
 ScriptedPlugin.scriptedSettings
 

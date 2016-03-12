@@ -26,6 +26,6 @@ Based on aspectj-sbt-plugin by Typesafe.
 Copyright
 ---------
 
-Copyright © 2013-2015 Alexey B. Aksenov/Ezh. All rights reserved.
+Copyright © 2013-2016 Alexey B. Aksenov/Ezh. All rights reserved.
 
 [sa]: https://github.com/sbt/sbt-aspectj
