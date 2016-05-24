@@ -1,7 +1,7 @@
 /**
  * sbt-aop - AspectJ for nested projects.
  *
- * Copyright (c) 2013-2015 Alexey Aksenov ezh@ezh.msk.ru
+ * Copyright (c) 2013-2016 Alexey Aksenov ezh@ezh.msk.ru
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ object Plugin extends sbt.Plugin {
     aopWeaveArg <<= (aopOptions, aopClasspath, aopMappings, aopInputResources, streams) map
       ((aspectjOptions, aspectjClasspath, aspectjMappings, aspectjInputResources, streams) ⇒
         Weave(streams.cacheDirectory, aspectjClasspath, aspectjMappings, aspectjOptions, aspectjInputResources)),
-    aspectjVersion := AspectJVersion,
     excludeFilter := HiddenFileFilter,
     includeFilter := "*.aj",
     sourceDirectories <<= Seq(aopSource).join,
@@ -79,7 +78,6 @@ object Plugin extends sbt.Plugin {
     aopWeaveArg <<= (aopOptions, aopClasspath, aopMappings, aopInputResources, streams) map
       ((aspectjOptions, aspectjClasspath, aspectjMappings, aspectjInputResources, streams) ⇒
         Weave(streams.cacheDirectory, aspectjClasspath, aspectjMappings, aspectjOptions, aspectjInputResources)),
-    aspectjVersion := AspectJVersion,
     excludeFilter := HiddenFileFilter,
     includeFilter := "*.aj",
     sourceDirectories <<= Seq(aopSource).join,
@@ -88,21 +86,18 @@ object Plugin extends sbt.Plugin {
   /** AspectJ dependencies */
   def dependencySettings = Seq(
     ivyConfigurations ++= Seq(AOPCompileConf, AOPTestConf),
-    libraryDependencies <++= (aspectjVersion in AOPCompileConf) { version ⇒
-      Seq(
-        "org.aspectj" % "aspectjtools" % version % AOPCompileConf.name,
-        "org.aspectj" % "aspectjweaver" % version % AOPCompileConf.name,
-        "org.aspectj" % "aspectjrt" % version % AOPCompileConf.name)
-    })
+    libraryDependencies ++= Seq(
+      "org.aspectj" % "aspectjtools" % AspectJVersion % AOPCompileConf.name,
+      "org.aspectj" % "aspectjweaver" % AspectJVersion % AOPCompileConf.name,
+      "org.aspectj" % "aspectjrt" % AspectJVersion % AOPCompileConf.name))
+
   /** AspectJ dependencies with public AspectJRT dependency */
   def dependencySettingsRT = Seq(
     ivyConfigurations ++= Seq(AOPCompileConf, AOPTestConf),
-    libraryDependencies <++= (aspectjVersion in AOPCompileConf) { version ⇒
-      Seq(
-        "org.aspectj" % "aspectjtools" % version % AOPCompileConf.name,
-        "org.aspectj" % "aspectjweaver" % version % AOPCompileConf.name,
-        "org.aspectj" % "aspectjrt" % version)
-    })
+    libraryDependencies ++= Seq(
+      "org.aspectj" % "aspectjtools" % AspectJVersion % AOPCompileConf.name,
+      "org.aspectj" % "aspectjweaver" % AspectJVersion % AOPCompileConf.name,
+      "org.aspectj" % "aspectjrt" % AspectJVersion))
 
   /** Collect all available aspects */
   def aspectsTask = (sources, aopBinary) map ((s, b) ⇒

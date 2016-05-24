@@ -43,6 +43,5 @@ object Keys {
   val aopSource = SettingKey[File]("aopSource", "Source directory for aspects.")
   val aopSourceLevel = TaskKey[Option[String]]("aopSourceLevel", "The AspectJ source level option.")
   val aopVerbose = SettingKey[Boolean]("aopVerbose", "Enable the -verbose AspectJ option.")
-  val aspectjVersion = SettingKey[String]("aspectjVersion", "AspectJ version to use.")
   val aopWeaveArg = TaskKey[Weave]("aopWeaveArguments", "Project settings for weave task.")
 }

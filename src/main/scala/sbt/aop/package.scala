@@ -23,7 +23,7 @@ import sbt.aop.argument.Weave
 import sbt.Keys._
 
 package object aop {
-  val AspectJVersion = "1.8.6"
+  val AspectJVersion = "1.8.9"
   /** Entry point for the plugin in user's project. */
   def AOP = Plugin.defaultCompileSettings ++ Plugin.defaultTestSettings ++
     Plugin.dependencySettings ++ compileSettings ++ testSettings

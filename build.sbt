@@ -21,7 +21,7 @@ name := "sbt-aop"
 
 version <<= (baseDirectory) { (b) => scala.io.Source.fromFile(b / "version").mkString.trim }
 
-libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.8"
+libraryDependencies += "org.aspectj" % "aspectjtools" % "1.8.9"
 
 ScriptedPlugin.scriptedSettings
 

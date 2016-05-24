@@ -2,7 +2,7 @@
 out: index.html
 ---
 
-SBT Aspectj Nested
+SBT AOP
 ======================
 
 AspectJ for hierarchical projects.
